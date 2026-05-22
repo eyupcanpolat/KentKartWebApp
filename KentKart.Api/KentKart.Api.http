@@ -1,0 +1,6 @@
+@KentKart.Api_HostAddress = http://localhost:5149
+
+GET {{KentKart.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
