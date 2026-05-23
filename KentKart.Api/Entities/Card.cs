@@ -22,6 +22,8 @@ public class Card
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     public ICollection<Trip> Trips { get; set; } = new List<Trip>();
 
+    public ICollection<LostCardReport> LostCardReports { get; set; } = new List<LostCardReport>();
+
 
 
 }

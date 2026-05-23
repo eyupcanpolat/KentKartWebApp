@@ -21,4 +21,8 @@
     <Folder Include="Repositories\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Services\LostCardReports\LostCardReportService.cs" />
+  </ItemGroup>
+
 </Project>

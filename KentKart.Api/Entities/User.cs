@@ -25,4 +25,6 @@ public class User
     public ICollection<Card> Cards { get; set; } = new List<Card>();
 
     public ICollection<CardApplication> CardApplications { get; set; } = new List<CardApplication>();
+
+    public ICollection<LostCardReport> LostCardReports { get; set; } = new List<LostCardReport>();
 }

@@ -11,6 +11,7 @@ using KentKart.Api.Services.Cards;
 using KentKart.Api.Services.Payments;
 using KentKart.Api.Services.Trips;
 using KentKart.Api.Services.Reports;
+using KentKart.Api.Services.LostCardReports;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,8 @@ builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ITripService, TripService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<ILostCardReportService, LostCardReportService>();
+
 
 
 var jwtKey = builder.Configuration["Jwt:Key"];

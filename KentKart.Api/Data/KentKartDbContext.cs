@@ -20,6 +20,7 @@ public class KentKartDbContext : DbContext
     public DbSet<LineStation> LineStations => Set<LineStation>();
     public DbSet<FareRule> FareRules => Set<FareRule>();
     public DbSet<Trip> Trips => Set<Trip>();
+    public DbSet<LostCardReport> LostCardReports => Set<LostCardReport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -503,5 +504,44 @@ public class KentKartDbContext : DbContext
                 .HasForeignKey(t => t.StationId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        modelBuilder.Entity<LostCardReport>(entity =>
+        {
+            entity.HasKey(lcr => lcr.LostCardReportId);
+
+            entity.Property(lcr => lcr.ReportDate)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.Property(lcr => lcr.Reason)
+                .IsRequired()
+                .HasMaxLength(300);
+
+            entity.Property(lcr => lcr.Status)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("Reported");
+
+            entity.HasIndex(lcr => lcr.CardId);
+
+            entity.HasIndex(lcr => lcr.UserId);
+
+            entity.ToTable(t =>
+            {
+                t.HasTrigger("trg_AfterLostCardReportInsert_MarkCardLost");
+
+                t.HasCheckConstraint("CK_LostCardReports_Status", "[Status] IN ('Reported', 'Reviewed', 'Rejected')");
+            });
+
+            entity.HasOne(lcr => lcr.Card)
+                .WithMany(c => c.LostCardReports)
+                .HasForeignKey(lcr => lcr.CardId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(lcr => lcr.User)
+                .WithMany(u => u.LostCardReports)
+                .HasForeignKey(lcr => lcr.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
+
 }
