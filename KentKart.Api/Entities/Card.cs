@@ -24,6 +24,7 @@ public class Card
 
     public ICollection<LostCardReport> LostCardReports { get; set; } = new List<LostCardReport>();
 
+    public ICollection<CardSubscription> CardSubscriptions { get; set; } = new List<CardSubscription>();
 
 
 }

@@ -22,6 +22,9 @@ public class KentKartDbContext : DbContext
     public DbSet<Trip> Trips => Set<Trip>();
     public DbSet<LostCardReport> LostCardReports => Set<LostCardReport>();
 
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<CardSubscription> CardSubscriptions => Set<CardSubscription>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -540,6 +543,133 @@ public class KentKartDbContext : DbContext
             entity.HasOne(lcr => lcr.User)
                 .WithMany(u => u.LostCardReports)
                 .HasForeignKey(lcr => lcr.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SubscriptionPlan>(entity =>
+        {
+            entity.HasKey(sp => sp.SubscriptionPlanId);
+
+            entity.Property(sp => sp.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(sp => sp.Description)
+                .HasMaxLength(300);
+
+            entity.Property(sp => sp.Price)
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+
+            entity.Property(sp => sp.RideCount)
+                .IsRequired();
+
+            entity.Property(sp => sp.ValidityDays)
+                .IsRequired();
+
+            entity.Property(sp => sp.IsActive)
+                .HasDefaultValue(true);
+
+            entity.Property(sp => sp.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.HasIndex(sp => sp.Name)
+                .IsUnique();
+
+            entity.HasIndex(sp => sp.CardTypeId);
+
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_SubscriptionPlans_Price", "[Price] > 0");
+                t.HasCheckConstraint("CK_SubscriptionPlans_RideCount", "[RideCount] > 0");
+                t.HasCheckConstraint("CK_SubscriptionPlans_ValidityDays", "[ValidityDays] > 0");
+            });
+
+            entity.HasOne(sp => sp.CardType)
+                .WithMany(ct => ct.SubscriptionPlans)
+                .HasForeignKey(sp => sp.CardTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasData(
+                new SubscriptionPlan
+                {
+                    SubscriptionPlanId = 1,
+                    Name = "Ogrenci Aylik 100 Binis",
+                    Description = "Öğrenci kartlar için 30 gün geçerli 100 binişlik abonman",
+                    CardTypeId = 2,
+                    Price = 250,
+                    RideCount = 100,
+                    ValidityDays = 30,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1)
+                },
+                new SubscriptionPlan
+                {
+                    SubscriptionPlanId = 2,
+                    Name = "Tam Aylik 60 Binis",
+                    Description = "Tam kartlar için 30 gün geçerli 60 binişlik abonman",
+                    CardTypeId = 1,
+                    Price = 500,
+                    RideCount = 60,
+                    ValidityDays = 30,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1)
+                },
+                new SubscriptionPlan
+                {
+                    SubscriptionPlanId = 3,
+                    Name = "Indirimli Aylik 80 Binis",
+                    Description = "İndirimli kartlar için 30 gün geçerli 80 binişlik abonman",
+                    CardTypeId = 3,
+                    Price = 350,
+                    RideCount = 80,
+                    ValidityDays = 30,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1)
+                }
+            );
+        });
+
+        modelBuilder.Entity<CardSubscription>(entity =>
+        {
+            entity.HasKey(cs => cs.CardSubscriptionId);
+
+            entity.Property(cs => cs.StartDate)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.Property(cs => cs.EndDate)
+                .IsRequired();
+
+            entity.Property(cs => cs.RemainingRideCount)
+                .IsRequired();
+
+            entity.Property(cs => cs.Status)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("Active");
+
+            entity.Property(cs => cs.CreatedAt)
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.HasIndex(cs => cs.CardId);
+
+            entity.HasIndex(cs => cs.SubscriptionPlanId);
+
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_CardSubscriptions_RemainingRideCount", "[RemainingRideCount] >= 0");
+                t.HasCheckConstraint("CK_CardSubscriptions_DateRange", "[EndDate] >= [StartDate]");
+                t.HasCheckConstraint("CK_CardSubscriptions_Status", "[Status] IN ('Active', 'Expired', 'Cancelled')");
+            });
+
+            entity.HasOne(cs => cs.Card)
+                .WithMany(c => c.CardSubscriptions)
+                .HasForeignKey(cs => cs.CardId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(cs => cs.SubscriptionPlan)
+                .WithMany(sp => sp.CardSubscriptions)
+                .HasForeignKey(cs => cs.SubscriptionPlanId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

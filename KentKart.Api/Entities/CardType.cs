@@ -19,4 +19,6 @@ public class CardType
     public ICollection<CardApplication> CardApplications { get; set; } = new List<CardApplication>();
 
     public ICollection<FareRule> FareRules { get; set; } = new List<FareRule>();
+
+    public ICollection<SubscriptionPlan> SubscriptionPlans { get; set; } = new List<SubscriptionPlan>();
 }

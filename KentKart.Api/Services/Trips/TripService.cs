@@ -14,6 +14,7 @@ public class TripService : ITripService
         _context = context;
     }
 
+
     public async Task<TripResponseDto> CreateTripAsync(int userId, CreateTripDto dto)
     {
         var card = await _context.Cards
@@ -54,21 +55,46 @@ public class TripService : ITripService
             throw new Exception("Seçilen durak bu hatta ait değildir.");
         }
 
-        var fareRule = await _context.FareRules
-            .FirstOrDefaultAsync(fr =>
-                fr.CardTypeId == card.CardTypeId &&
-                fr.IsActive &&
-                fr.ValidFrom <= DateTime.Now &&
-                (fr.ValidTo == null || fr.ValidTo >= DateTime.Now));
+        var activeSubscription = await _context.CardSubscriptions
+            .Include(cs => cs.SubscriptionPlan)
+            .FirstOrDefaultAsync(cs =>
+                cs.CardId == dto.CardId &&
+                cs.Status == "Active" &&
+                cs.EndDate >= DateTime.Now &&
+                cs.RemainingRideCount > 0);
 
-        if (fareRule == null)
+        decimal fareAmount;
+
+        if (activeSubscription != null)
         {
-            throw new Exception("Bu kart tipi için aktif ücret tarifesi bulunamadı.");
+            fareAmount = 0;
+            activeSubscription.RemainingRideCount -= 1;
+
+            if (activeSubscription.RemainingRideCount == 0)
+            {
+                activeSubscription.Status = "Expired";
+            }
         }
-
-        if (card.Balance < fareRule.Price)
+        else
         {
-            throw new Exception("Kart bakiyesi yetersiz.");
+            var fareRule = await _context.FareRules
+                .FirstOrDefaultAsync(fr =>
+                    fr.CardTypeId == card.CardTypeId &&
+                    fr.IsActive &&
+                    fr.ValidFrom <= DateTime.Now &&
+                    (fr.ValidTo == null || fr.ValidTo >= DateTime.Now));
+
+            if (fareRule == null)
+            {
+                throw new Exception("Bu kart tipi için aktif ücret tarifesi bulunamadı.");
+            }
+
+            if (card.Balance < fareRule.Price)
+            {
+                throw new Exception("Kart bakiyesi yetersiz.");
+            }
+
+            fareAmount = fareRule.Price;
         }
 
         var trip = new Trip
@@ -76,7 +102,7 @@ public class TripService : ITripService
             CardId = dto.CardId,
             BusLineId = dto.BusLineId,
             StationId = dto.StationId,
-            FareAmount = fareRule.Price,
+            FareAmount = fareAmount,
             Status = "Completed"
         };
 
@@ -94,6 +120,7 @@ public class TripService : ITripService
 
         return MapToDto(createdTrip, card.Balance);
     }
+
 
     public async Task<List<TripResponseDto>> GetMyTripsAsync(int userId)
     {
