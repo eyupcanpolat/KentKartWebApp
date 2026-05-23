@@ -12,6 +12,7 @@ using KentKart.Api.Services.Payments;
 using KentKart.Api.Services.Trips;
 using KentKart.Api.Services.Reports;
 using KentKart.Api.Services.LostCardReports;
+using KentKart.Api.Services.Admin;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,7 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ITripService, TripService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ILostCardReportService, LostCardReportService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 
 
 
