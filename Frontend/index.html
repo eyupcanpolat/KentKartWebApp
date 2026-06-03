@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>KentKart Web App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>KentKart Web App</h1>
+    <p>Toplu taşıma kart başvuru, bakiye ve yönetim sistemi</p>
+    <div id="userStatus" class="status guest">Giriş yapılmadı</div>
+</header>
+
+<main>
+    <section class="card">
+        <h2>Giriş Yap</h2>
+        <input id="loginEmail" type="email" placeholder="E-posta">
+        <input id="loginPassword" type="password" placeholder="Şifre">
+        <button onclick="login()">Giriş Yap</button>
+        <button class="gray" onclick="logout()">Çıkış Yap</button>
+        <p id="loginResult"></p>
+    </section>
+
+    <section class="card">
+        <h2>Kayıt Ol</h2>
+        <input id="registerFullName" type="text" placeholder="Ad Soyad">
+        <input id="registerEmail" type="email" placeholder="E-posta">
+        <input id="registerPassword" type="password" placeholder="Şifre">
+        <button onclick="register()">Kayıt Ol</button>
+        <p id="registerResult"></p>
+    </section>
+
+    <section class="card wide">
+    <h2>API İşlem Paneli</h2>
+
+    <label>HTTP Metodu</label>
+    <select id="customMethod">
+        <option value="GET">GET</option>
+        <option value="POST">POST</option>
+        <option value="PUT">PUT</option>
+        <option value="DELETE">DELETE</option>
+    </select>
+
+    <label>Endpoint</label>
+    <input id="customEndpoint" type="text" placeholder="/Admin/bus-lines">
+
+    <label>JSON Body</label>
+    <textarea id="customBody" placeholder='{"lineCode":"99","lineName":"Test Hattı"}'></textarea>
+
+    <button onclick="customRequest()">İstek Gönder</button>
+
+    <pre id="customResult">API sonucu burada görünecek.</pre>
+</section>
+
+    <section class="card wide">
+        <h2>Manuel API Test</h2>
+        <input id="customEndpoint" type="text" placeholder="/Admin/bus-lines">
+        <button onclick="customGet()">GET İsteği Gönder</button>
+        <pre id="customResult">Manuel API sonucu burada görünecek.</pre>
+    </section>
+</main>
+
+<footer>
+    <p>VTYS Projesi - KentKart</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
