@@ -25,40 +25,49 @@
 
     <section class="card">
         <h2>Kayıt Ol</h2>
-        <input id="registerFullName" type="text" placeholder="Ad Soyad">
+        <input id="registerFirstName" type="text" placeholder="Ad">
+        <input id="registerLastName" type="text" placeholder="Soyad">
         <input id="registerEmail" type="email" placeholder="E-posta">
         <input id="registerPassword" type="password" placeholder="Şifre">
+        <input id="registerPhoneNumber" type="text" placeholder="Telefon (opsiyonel)">
         <button onclick="register()">Kayıt Ol</button>
         <p id="registerResult"></p>
     </section>
 
     <section class="card wide">
-    <h2>API İşlem Paneli</h2>
+        <h2>Admin Listeleme</h2>
+        <button onclick="getBusLines()">Hatları Listele</button>
+        <button onclick="getStations()">Durakları Listele</button>
+        <pre id="adminResult">Admin API sonucu burada görünecek.</pre>
+    </section>
 
-    <label>HTTP Metodu</label>
-    <select id="customMethod">
-        <option value="GET">GET</option>
-        <option value="POST">POST</option>
-        <option value="PUT">PUT</option>
-        <option value="DELETE">DELETE</option>
-    </select>
+    <section class="card wide">
+        <h2>API İşlem Paneli</h2>
 
-    <label>Endpoint</label>
-    <input id="customEndpoint" type="text" placeholder="/Admin/bus-lines">
+        <label>HTTP Metodu</label>
+        <select id="customMethod">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+        </select>
 
-    <label>JSON Body</label>
-    <textarea id="customBody" placeholder='{"lineCode":"99","lineName":"Test Hattı"}'></textarea>
+        <label>Endpoint</label>
+        <input id="customEndpoint" type="text" placeholder="/Admin/bus-lines">
 
-    <button onclick="customRequest()">İstek Gönder</button>
+        <label>JSON Body</label>
+        <textarea id="customBody" placeholder='{"lineCode":"99","lineName":"Test Hattı"}'></textarea>
 
-    <pre id="customResult">API sonucu burada görünecek.</pre>
-</section>
+        <button onclick="customRequest()">İstek Gönder</button>
+
+        <pre id="customResult">API sonucu burada görünecek.</pre>
+    </section>
 
     <section class="card wide">
         <h2>Manuel API Test</h2>
-        <input id="customEndpoint" type="text" placeholder="/Admin/bus-lines">
+        <input id="manualEndpoint" type="text" placeholder="/Admin/bus-lines">
         <button onclick="customGet()">GET İsteği Gönder</button>
-        <pre id="customResult">Manuel API sonucu burada görünecek.</pre>
+        <pre id="manualResult">Manuel API sonucu burada görünecek.</pre>
     </section>
 </main>
 

@@ -7,6 +7,10 @@ function getToken() {
 function showResult(elementId, data) {
     const element = document.getElementById(elementId);
 
+    if (!element) {
+        return;
+    }
+
     if (data instanceof Error) {
         element.textContent = data.message;
         return;
@@ -18,6 +22,16 @@ function showResult(elementId, data) {
     }
 
     element.textContent = JSON.stringify(data, null, 2);
+}
+
+function normalizeEndpoint(endpointInput) {
+    const endpoint = endpointInput.trim();
+
+    if (!endpoint) {
+        return "";
+    }
+
+    return endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 }
 
 async function apiRequest(endpoint, method = "GET", body = null) {
@@ -41,7 +55,6 @@ async function apiRequest(endpoint, method = "GET", body = null) {
     }
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-
     const text = await response.text();
 
     let data;
@@ -77,6 +90,7 @@ async function login() {
 
         if (token) {
             localStorage.setItem("token", token);
+            updateUserStatus();
             showResult("loginResult", "Giriş başarılı. Token kaydedildi.");
         } else {
             showResult("loginResult", data);
@@ -87,15 +101,19 @@ async function login() {
 }
 
 async function register() {
-    const fullName = document.getElementById("registerFullName").value;
+    const firstName = document.getElementById("registerFirstName").value;
+    const lastName = document.getElementById("registerLastName").value;
     const email = document.getElementById("registerEmail").value;
     const password = document.getElementById("registerPassword").value;
+    const phoneNumber = document.getElementById("registerPhoneNumber").value;
 
     try {
         const data = await apiRequest("/Auth/register", "POST", {
-            fullName: fullName,
+            firstName: firstName,
+            lastName: lastName,
             email: email,
-            password: password
+            password: password,
+            phoneNumber: phoneNumber || null
         });
 
         showResult("registerResult", data);
@@ -106,6 +124,7 @@ async function register() {
 
 function logout() {
     localStorage.removeItem("token");
+    updateUserStatus();
     showResult("loginResult", "Çıkış yapıldı. Token silindi.");
 }
 
@@ -129,10 +148,13 @@ async function getStations() {
 
 async function customRequest() {
     const method = document.getElementById("customMethod").value;
-    const endpointInput = document.getElementById("customEndpoint").value;
+    const endpoint = normalizeEndpoint(document.getElementById("customEndpoint").value);
     const bodyText = document.getElementById("customBody").value.trim();
 
-    const endpoint = endpointInput.startsWith("/") ? endpointInput : `/${endpointInput}`;
+    if (!endpoint) {
+        showResult("customResult", "Endpoint alanı boş olamaz.");
+        return;
+    }
 
     let body = null;
 
@@ -152,6 +174,23 @@ async function customRequest() {
         showResult("customResult", error);
     }
 }
+
+async function customGet() {
+    const endpoint = normalizeEndpoint(document.getElementById("manualEndpoint").value);
+
+    if (!endpoint) {
+        showResult("manualResult", "Endpoint alanı boş olamaz.");
+        return;
+    }
+
+    try {
+        const data = await apiRequest(endpoint);
+        showResult("manualResult", data);
+    } catch (error) {
+        showResult("manualResult", error);
+    }
+}
+
 function parseJwt(token) {
     try {
         const base64Url = token.split(".")[1];
@@ -186,9 +225,23 @@ function getRoleFromToken(token) {
     );
 }
 
+function isAdminRole(role) {
+    if (Array.isArray(role)) {
+        return role.some(function (item) {
+            return item && item.toString().toLowerCase() === "admin";
+        });
+    }
+
+    return role && role.toString().toLowerCase() === "admin";
+}
+
 function updateUserStatus() {
     const status = document.getElementById("userStatus");
     const token = getToken();
+
+    if (!status) {
+        return;
+    }
 
     if (!token) {
         status.textContent = "Giriş yapılmadı";
@@ -198,7 +251,7 @@ function updateUserStatus() {
 
     const role = getRoleFromToken(token);
 
-    if (role && role.toString().toLowerCase() === "admin") {
+    if (isAdminRole(role)) {
         status.textContent = "Admin olarak giriş yapıldı";
         status.className = "status admin";
     } else {
