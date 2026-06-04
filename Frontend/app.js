@@ -40,6 +40,53 @@ function escapeHtml(value) {
         .replace(/'/g, "&#039;");
 }
 
+function setActiveSideMenuItem(menuItem) {
+    if (!menuItem) {
+        return;
+    }
+
+    const menu = menuItem.closest(".side-chip-list");
+
+    if (!menu) {
+        return;
+    }
+
+    menu.querySelectorAll(".side-nav-item").forEach(function (item) {
+        item.classList.toggle("active", item === menuItem);
+    });
+}
+
+function highlightCard(targetId) {
+    const target = document.getElementById(targetId);
+
+    if (!target) {
+        return;
+    }
+
+    target.classList.remove("dashboard-card-highlight");
+    void target.offsetWidth;
+    target.classList.add("dashboard-card-highlight");
+
+    window.setTimeout(function () {
+        target.classList.remove("dashboard-card-highlight");
+    }, 1300);
+}
+
+function scrollToDashboardCard(targetId, menuItem) {
+    const target = document.getElementById(targetId);
+
+    if (!target) {
+        return;
+    }
+
+    setActiveSideMenuItem(menuItem);
+    target.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+    });
+    highlightCard(targetId);
+}
+
 function normalizeEndpoint(endpointInput) {
     const endpoint = endpointInput.trim();
 
@@ -326,7 +373,10 @@ function renderAdminTable(type, items, targetId) {
     });
 
     if (!hasKnownStationField) {
-        result.innerHTML = `<pre class="code-result">${escapeHtml(JSON.stringify(items, null, 2))}</pre>`;
+        renderSimpleCards(targetId, "Durak", items, [
+            { key: "id", label: "Kayıt" },
+            { key: "name", label: "Ad" }
+        ]);
         return;
     }
 
@@ -981,7 +1031,16 @@ function renderUnknownReport(title, rows) {
     return `
         <section class="report-section">
             <h3>${escapeHtml(title)}</h3>
-            <pre class="code-result">${escapeHtml(JSON.stringify(rows, null, 2))}</pre>
+            <div class="mobile-list always-visible">
+                ${rows.map(function (item) {
+                    return `
+                        <article class="data-card">
+                            <h3>${escapeHtml(title)}</h3>
+                            <p>${escapeHtml(Object.values(item).slice(0, 4).join(" - ") || "Kayıt görüntülendi.")}</p>
+                        </article>
+                    `;
+                }).join("")}
+            </div>
         </section>
     `;
 }
@@ -1166,6 +1225,69 @@ async function loadMyCards() {
     }
 }
 
+async function getMyApplications() {
+    return toggleActionResult("getMyApplications", "cardResult", loadMyApplications, "all");
+}
+
+async function loadMyApplications() {
+    try {
+        setLocalMessage("cardResult", "Başvurularınız yükleniyor...");
+        const data = await apiRequest("/CardApplications/my");
+        renderSimpleCards("cardResult", "Başvuru", data, [
+            { key: "cardTypeName", label: "Kart tipi" },
+            { key: "status", label: "Durum" },
+            { key: "applicationDate", label: "Başvuru tarihi" },
+            { key: "approvedAt", label: "Değerlendirme tarihi" },
+            { key: "adminNote", label: "Not" }
+        ]);
+    } catch (error) {
+        setLocalMessage("cardResult", getFriendlyErrorMessage(error, "Kart başvurularınız yüklenemedi."));
+    }
+}
+
+async function getMyPayments() {
+    return toggleActionResult("getMyPayments", "balanceTripResult", loadMyPayments, "all");
+}
+
+async function loadMyPayments() {
+    try {
+        setLocalMessage("balanceTripResult", "Ödeme geçmişiniz yükleniyor...");
+        const data = await apiRequest("/Payments/my");
+        renderSimpleCards("balanceTripResult", "Ödeme", data, [
+            { key: "cardNumber", label: "Kart numarası" },
+            { key: "amount", label: "Tutar" },
+            { key: "currentBalance", label: "Güncel bakiye" },
+            { key: "paymentMethod", label: "Ödeme yöntemi" },
+            { key: "status", label: "Durum" },
+            { key: "paymentDate", label: "İşlem tarihi" }
+        ]);
+    } catch (error) {
+        setLocalMessage("balanceTripResult", getFriendlyErrorMessage(error, "Ödeme geçmişiniz yüklenemedi."));
+    }
+}
+
+async function getMyTrips() {
+    return toggleActionResult("getMyTrips", "balanceTripResult", loadMyTrips, "all");
+}
+
+async function loadMyTrips() {
+    try {
+        setLocalMessage("balanceTripResult", "Yolculuk geçmişiniz yükleniyor...");
+        const data = await apiRequest("/Trips/my");
+        renderSimpleCards("balanceTripResult", "Yolculuk", data, [
+            { key: "cardNumber", label: "Kart numarası" },
+            { key: "lineName", label: "Hat" },
+            { key: "stationName", label: "Durak" },
+            { key: "fareAmount", label: "Ücret" },
+            { key: "currentBalance", label: "Güncel bakiye" },
+            { key: "tripDate", label: "Yolculuk tarihi" },
+            { key: "status", label: "Durum" }
+        ]);
+    } catch (error) {
+        setLocalMessage("balanceTripResult", getFriendlyErrorMessage(error, "Yolculuk geçmişiniz yüklenemedi."));
+    }
+}
+
 async function getSubscriptionPlans() {
     return toggleActionResult("getSubscriptionPlans", "subscriptionLostResult", loadSubscriptionPlans, "all");
 }
@@ -1183,6 +1305,47 @@ async function loadSubscriptionPlans() {
         ]);
     } catch (error) {
         setLocalMessage("subscriptionLostResult", error.message);
+    }
+}
+
+async function getMySubscriptions() {
+    return toggleActionResult("getMySubscriptions", "subscriptionLostResult", loadMySubscriptions, "all");
+}
+
+async function loadMySubscriptions() {
+    try {
+        setLocalMessage("subscriptionLostResult", "Abonmanlarınız yükleniyor...");
+        const data = await apiRequest("/Subscriptions/my");
+        renderSimpleCards("subscriptionLostResult", "Abonman", data, [
+            { key: "planName", label: "Plan" },
+            { key: "cardNumber", label: "Kart numarası" },
+            { key: "remainingRideCount", label: "Kalan biniş" },
+            { key: "startDate", label: "Başlangıç" },
+            { key: "endDate", label: "Bitiş" },
+            { key: "status", label: "Durum" }
+        ]);
+    } catch (error) {
+        setLocalMessage("subscriptionLostResult", getFriendlyErrorMessage(error, "Abonmanlarınız yüklenemedi."));
+    }
+}
+
+async function getMyLostCardReports() {
+    return toggleActionResult("getMyLostCardReports", "subscriptionLostResult", loadMyLostCardReports, "all");
+}
+
+async function loadMyLostCardReports() {
+    try {
+        setLocalMessage("subscriptionLostResult", "Kayıp kart bildirimleriniz yükleniyor...");
+        const data = await apiRequest("/LostCardReports/my");
+        renderSimpleCards("subscriptionLostResult", "Kayıp Kart", data, [
+            { key: "cardNumber", label: "Kart numarası" },
+            { key: "reason", label: "Açıklama" },
+            { key: "status", label: "Bildirim durumu" },
+            { key: "cardStatus", label: "Kart durumu" },
+            { key: "reportDate", label: "Bildirim tarihi" }
+        ]);
+    } catch (error) {
+        setLocalMessage("subscriptionLostResult", getFriendlyErrorMessage(error, "Kayıp kart bildirimleriniz yüklenemedi."));
     }
 }
 
@@ -1316,24 +1479,7 @@ function isAdminRole(role) {
 }
 
 function updateUserStatus() {
-    const status = document.getElementById("userStatus");
-    const token = getToken();
     const userInfo = getUserInfoFromToken();
-
-    if (!status) {
-        return;
-    }
-
-    if (!token) {
-        status.textContent = "Giriş yapılmadı";
-        status.className = "status guest";
-    } else if (isAdminRole(userInfo.role)) {
-        status.textContent = "Admin olarak giriş yapıldı";
-        status.className = "status admin";
-    } else {
-        status.textContent = "Kullanıcı olarak giriş yapıldı";
-        status.className = "status user";
-    }
 
     updateProfileArea(userInfo);
     updateSettingsInfo(userInfo);
