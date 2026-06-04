@@ -1,0 +1,870 @@
+=========================================================
+KentKart Web App - SQL Betikleri
+=========================================================
+
+Bu dosya KentKartWebApp projesinde kullanilan view, trigger, stored
+procedure, test sorgulari ve ornek veri SQL betiklerini icerir.
+
+Betikler asagidaki sirayla calistirilmalidir:
+  01_Views.sql
+  02_Triggers.sql
+  03_StoredProcedures.sql
+  05_DummyData.sql
+(Test icin: 04_TestQueries.sql)
+
+=========================================================
+
+
+#########################################################
+# 1) 01_Views.sql - Raporlama Amacli View Yapilari
+#########################################################
+
+/* =========================================================
+   KentKart Web App - Views
+   Bu dosyada raporlama amacli SQL View yapilari bulunmaktadir.
+   ========================================================= */
+
+CREATE OR ALTER VIEW dbo.vw_UserCardSummary
+AS
+SELECT
+    u.UserId,
+    u.FirstName + ' ' + u.LastName AS FullName,
+    u.Email,
+    c.CardId,
+    c.CardNumber,
+    ct.Name AS CardTypeName,
+    ct.DiscountRate,
+    c.Balance,
+    c.Status AS CardStatus,
+    c.CreatedAt AS CardCreatedAt
+FROM dbo.Cards c
+INNER JOIN dbo.Users u ON c.UserId = u.UserId
+INNER JOIN dbo.CardTypes ct ON c.CardTypeId = ct.CardTypeId;
+GO
+
+
+CREATE OR ALTER VIEW dbo.vw_DailyRevenue
+AS
+SELECT
+    CAST(p.PaymentDate AS date) AS RevenueDate,
+    COUNT(p.PaymentId) AS PaymentCount,
+    SUM(p.Amount) AS TotalRevenue
+FROM dbo.Payments p
+WHERE p.Status = 'Success'
+GROUP BY CAST(p.PaymentDate AS date);
+GO
+
+
+CREATE OR ALTER VIEW dbo.vw_MostUsedBusLines
+AS
+SELECT
+    bl.BusLineId,
+    bl.LineCode,
+    bl.LineName,
+    COUNT(t.TripId) AS TripCount,
+    ISNULL(SUM(t.FareAmount), 0) AS TotalFareAmount
+FROM dbo.BusLines bl
+LEFT JOIN dbo.Trips t ON bl.BusLineId = t.BusLineId
+GROUP BY bl.BusLineId, bl.LineCode, bl.LineName;
+GO
+
+
+#########################################################
+# 2) 02_Triggers.sql - Otomatik Calisan Trigger Yapilari
+#########################################################
+
+/* =========================================================
+   KentKart Web App - Triggers
+   Bu dosyada otomatik calisan SQL trigger yapilari bulunmaktadir.
+   ========================================================= */
+
+
+/* Odeme kaydi eklendiginde kart bakiyesini artirir */
+IF OBJECT_ID('dbo.trg_AfterPaymentInsert_UpdateCardBalance', 'TR') IS NOT NULL
+BEGIN
+    DROP TRIGGER dbo.trg_AfterPaymentInsert_UpdateCardBalance;
+END;
+GO
+
+CREATE TRIGGER dbo.trg_AfterPaymentInsert_UpdateCardBalance
+ON dbo.Payments
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE c
+    SET c.Balance = c.Balance + x.TotalAmount
+    FROM dbo.Cards c
+    INNER JOIN (
+        SELECT
+            CardId,
+            SUM(Amount) AS TotalAmount
+        FROM inserted
+        WHERE Status = 'Success'
+          AND PaymentType = 'BalanceLoad'
+        GROUP BY CardId
+    ) x ON c.CardId = x.CardId;
+END;
+GO
+
+
+/* Yolculuk kaydi eklendiginde kart bakiyesinden ucreti duser */
+IF OBJECT_ID('dbo.trg_AfterTripInsert_DeductCardBalance', 'TR') IS NOT NULL
+BEGIN
+    DROP TRIGGER dbo.trg_AfterTripInsert_DeductCardBalance;
+END;
+GO
+
+CREATE TRIGGER dbo.trg_AfterTripInsert_DeductCardBalance
+ON dbo.Trips
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        INNER JOIN dbo.Cards c ON c.CardId = i.CardId
+        WHERE i.Status = 'Completed'
+          AND c.Balance < i.FareAmount
+    )
+    BEGIN
+        RAISERROR('Kart bakiyesi yetersiz oldugu icin yolculuk islemi yapilamaz.', 16, 1);
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+    UPDATE c
+    SET c.Balance = c.Balance - x.TotalFare
+    FROM dbo.Cards c
+    INNER JOIN (
+        SELECT
+            CardId,
+            SUM(FareAmount) AS TotalFare
+        FROM inserted
+        WHERE Status = 'Completed'
+        GROUP BY CardId
+    ) x ON c.CardId = x.CardId;
+END;
+GO
+
+
+/* Kayip kart bildirimi eklendiginde kart durumunu Lost yapar */
+IF OBJECT_ID('dbo.trg_AfterLostCardReportInsert_MarkCardLost', 'TR') IS NOT NULL
+BEGIN
+    DROP TRIGGER dbo.trg_AfterLostCardReportInsert_MarkCardLost;
+END;
+GO
+
+CREATE TRIGGER dbo.trg_AfterLostCardReportInsert_MarkCardLost
+ON dbo.LostCardReports
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE c
+    SET c.Status = 'Lost'
+    FROM dbo.Cards c
+    INNER JOIN inserted i ON c.CardId = i.CardId
+    WHERE i.Status = 'Reported';
+END;
+GO
+
+
+#########################################################
+# 3) 03_StoredProcedures.sql - Hazir Rapor ve Islem Sorgulari
+#########################################################
+
+/* =========================================================
+   KentKart Web App - Stored Procedures
+   Bu dosyada hazir rapor ve islem sorgulari bulunmaktadir.
+   ========================================================= */
+
+
+/* Kullanicinin kart ozet bilgilerini getirir */
+CREATE OR ALTER PROCEDURE dbo.sp_GetUserDashboard
+    @UserId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        u.UserId,
+        u.FirstName + ' ' + u.LastName AS FullName,
+        u.Email,
+        c.CardId,
+        c.CardNumber,
+        ct.Name AS CardTypeName,
+        c.Balance,
+        c.Status AS CardStatus
+    FROM dbo.Users u
+    INNER JOIN dbo.Cards c ON u.UserId = c.UserId
+    INNER JOIN dbo.CardTypes ct ON c.CardTypeId = ct.CardTypeId
+    WHERE u.UserId = @UserId;
+END;
+GO
+
+
+/* Gunluk odeme gelir raporunu getirir */
+CREATE OR ALTER PROCEDURE dbo.sp_GetDailyRevenueReport
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        RevenueDate,
+        PaymentCount,
+        TotalRevenue
+    FROM dbo.vw_DailyRevenue
+    ORDER BY RevenueDate DESC;
+END;
+GO
+
+
+/* En cok kullanilan hatlari raporlar */
+CREATE OR ALTER PROCEDURE dbo.sp_GetMostUsedBusLinesReport
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        BusLineId,
+        LineCode,
+        LineName,
+        TripCount,
+        TotalFareAmount
+    FROM dbo.vw_MostUsedBusLines
+    ORDER BY TripCount DESC;
+END;
+GO
+
+
+#########################################################
+# 4) 04_TestQueries.sql - Veritabani Kontrol ve Test Sorgulari
+#########################################################
+
+/* =========================================================
+   KentKart Web App - Test Queries
+   Bu dosyada veritabani kontrol ve test sorgulari bulunmaktadir.
+   ========================================================= */
+
+
+/* 1) Tablolardaki kayit sayilarini kontrol eder */
+SELECT 'Roles' AS TableName, COUNT(*) AS RecordCount FROM dbo.Roles
+UNION ALL
+SELECT 'Users', COUNT(*) FROM dbo.Users
+UNION ALL
+SELECT 'CardTypes', COUNT(*) FROM dbo.CardTypes
+UNION ALL
+SELECT 'CardApplications', COUNT(*) FROM dbo.CardApplications
+UNION ALL
+SELECT 'Cards', COUNT(*) FROM dbo.Cards
+UNION ALL
+SELECT 'Payments', COUNT(*) FROM dbo.Payments
+UNION ALL
+SELECT 'BusLines', COUNT(*) FROM dbo.BusLines
+UNION ALL
+SELECT 'Stations', COUNT(*) FROM dbo.Stations
+UNION ALL
+SELECT 'LineStations', COUNT(*) FROM dbo.LineStations
+UNION ALL
+SELECT 'FareRules', COUNT(*) FROM dbo.FareRules
+UNION ALL
+SELECT 'Trips', COUNT(*) FROM dbo.Trips
+UNION ALL
+SELECT 'LostCardReports', COUNT(*) FROM dbo.LostCardReports
+UNION ALL
+SELECT 'SubscriptionPlans', COUNT(*) FROM dbo.SubscriptionPlans
+UNION ALL
+SELECT 'CardSubscriptions', COUNT(*) FROM dbo.CardSubscriptions;
+
+
+/* 2) Indexleri listeler */
+SELECT
+    t.name AS TableName,
+    ind.name AS IndexName,
+    ind.type_desc AS IndexType,
+    col.name AS ColumnName,
+    ind.is_unique AS IsUnique
+FROM sys.indexes ind
+INNER JOIN sys.index_columns ic
+    ON ind.object_id = ic.object_id
+    AND ind.index_id = ic.index_id
+INNER JOIN sys.columns col
+    ON ic.object_id = col.object_id
+    AND ic.column_id = col.column_id
+INNER JOIN sys.tables t
+    ON ind.object_id = t.object_id
+WHERE ind.is_primary_key = 0
+  AND ind.name IS NOT NULL
+ORDER BY t.name, ind.name;
+
+
+/* 3) Constraintleri listeler */
+SELECT
+    tc.TABLE_NAME AS TableName,
+    tc.CONSTRAINT_NAME AS ConstraintName,
+    tc.CONSTRAINT_TYPE AS ConstraintType
+FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+ORDER BY tc.TABLE_NAME, tc.CONSTRAINT_TYPE;
+
+
+/* 4) Check constraint detaylarini gosterir */
+SELECT
+    t.name AS TableName,
+    cc.name AS CheckConstraintName,
+    cc.definition AS Definition
+FROM sys.check_constraints cc
+INNER JOIN sys.tables t
+    ON cc.parent_object_id = t.object_id
+ORDER BY t.name;
+
+
+/* 5) Foreign key iliskilerini gosterir */
+SELECT
+    fk.name AS ForeignKeyName,
+    tp.name AS ParentTable,
+    cp.name AS ParentColumn,
+    tr.name AS ReferencedTable,
+    cr.name AS ReferencedColumn
+FROM sys.foreign_keys fk
+INNER JOIN sys.foreign_key_columns fkc
+    ON fk.object_id = fkc.constraint_object_id
+INNER JOIN sys.tables tp
+    ON fkc.parent_object_id = tp.object_id
+INNER JOIN sys.columns cp
+    ON fkc.parent_object_id = cp.object_id
+    AND fkc.parent_column_id = cp.column_id
+INNER JOIN sys.tables tr
+    ON fkc.referenced_object_id = tr.object_id
+INNER JOIN sys.columns cr
+    ON fkc.referenced_object_id = cr.object_id
+    AND fkc.referenced_column_id = cr.column_id
+ORDER BY tp.name;
+
+
+/* 6) View listesini gosterir */
+SELECT
+    name AS ViewName,
+    create_date,
+    modify_date
+FROM sys.views
+ORDER BY name;
+
+
+/* 7) Trigger listesini gosterir */
+SELECT
+    tr.name AS TriggerName,
+    OBJECT_NAME(tr.parent_id) AS TableName,
+    tr.create_date,
+    tr.modify_date
+FROM sys.triggers tr
+ORDER BY tr.name;
+
+
+/* 8) Stored procedure listesini gosterir */
+SELECT
+    name AS ProcedureName,
+    create_date,
+    modify_date
+FROM sys.procedures
+ORDER BY name;
+
+
+/* 9) View testleri */
+SELECT * FROM dbo.vw_UserCardSummary;
+SELECT * FROM dbo.vw_DailyRevenue;
+SELECT * FROM dbo.vw_MostUsedBusLines;
+
+
+/* 10) Stored procedure testleri */
+EXEC dbo.sp_GetUserDashboard @UserId = 1;
+EXEC dbo.sp_GetDailyRevenueReport;
+EXEC dbo.sp_GetMostUsedBusLinesReport;
+
+
+/* 11) Guclu JOIN sorgusu: kullanici, kart, kart tipi ve yolculuk sayisi */
+SELECT
+    u.FirstName + ' ' + u.LastName AS FullName,
+    u.Email,
+    c.CardNumber,
+    ct.Name AS CardType,
+    c.Balance,
+    c.Status AS CardStatus,
+    COUNT(t.TripId) AS TripCount
+FROM dbo.Users u
+INNER JOIN dbo.Cards c ON u.UserId = c.UserId
+INNER JOIN dbo.CardTypes ct ON c.CardTypeId = ct.CardTypeId
+LEFT JOIN dbo.Trips t ON c.CardId = t.CardId
+GROUP BY
+    u.FirstName,
+    u.LastName,
+    u.Email,
+    c.CardNumber,
+    ct.Name,
+    c.Balance,
+    c.Status
+ORDER BY TripCount DESC;
+
+
+/* 12) Odeme gecmisi detay sorgusu */
+SELECT
+    p.PaymentId,
+    u.FirstName + ' ' + u.LastName AS FullName,
+    c.CardNumber,
+    p.Amount,
+    p.PaymentMethod,
+    p.PaymentType,
+    p.Status,
+    p.PaymentDate,
+    p.Description
+FROM dbo.Payments p
+INNER JOIN dbo.Cards c ON p.CardId = c.CardId
+INNER JOIN dbo.Users u ON c.UserId = u.UserId
+ORDER BY p.PaymentDate DESC;
+
+
+/* 13) Yolculuk gecmisi detay sorgusu */
+SELECT
+    t.TripId,
+    u.FirstName + ' ' + u.LastName AS FullName,
+    c.CardNumber,
+    bl.LineCode,
+    bl.LineName,
+    s.StationName,
+    t.FareAmount,
+    t.TripDate,
+    t.Status
+FROM dbo.Trips t
+INNER JOIN dbo.Cards c ON t.CardId = c.CardId
+INNER JOIN dbo.Users u ON c.UserId = u.UserId
+INNER JOIN dbo.BusLines bl ON t.BusLineId = bl.BusLineId
+INNER JOIN dbo.Stations s ON t.StationId = s.StationId
+ORDER BY t.TripDate DESC;
+
+
+/* 14) Aktif abonmanlari gosterir */
+SELECT
+    cs.CardSubscriptionId,
+    u.FirstName + ' ' + u.LastName AS FullName,
+    c.CardNumber,
+    sp.Name AS SubscriptionPlan,
+    cs.RemainingRideCount,
+    cs.StartDate,
+    cs.EndDate,
+    cs.Status
+FROM dbo.CardSubscriptions cs
+INNER JOIN dbo.Cards c ON cs.CardId = c.CardId
+INNER JOIN dbo.Users u ON c.UserId = u.UserId
+INNER JOIN dbo.SubscriptionPlans sp ON cs.SubscriptionPlanId = sp.SubscriptionPlanId
+ORDER BY cs.CreatedAt DESC;
+
+
+/* 15) Kayip kart bildirimlerini gosterir */
+SELECT
+    lcr.LostCardReportId,
+    u.FirstName + ' ' + u.LastName AS FullName,
+    c.CardNumber,
+    lcr.ReportDate,
+    lcr.Reason,
+    lcr.Status AS ReportStatus,
+    c.Status AS CardStatus
+FROM dbo.LostCardReports lcr
+INNER JOIN dbo.Cards c ON lcr.CardId = c.CardId
+INNER JOIN dbo.Users u ON lcr.UserId = u.UserId
+ORDER BY lcr.ReportDate DESC;
+
+
+#########################################################
+# 5) 05_DummyData.sql - Test Amacli Ornek Veriler
+#########################################################
+
+/* =========================================================
+   KentKart Web App - Dummy Data
+   Bu dosyada test amacli ornek veriler bulunmaktadir.
+   ========================================================= */
+
+
+/* =========================
+   1) Roles
+   ========================= */
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE Name = 'Driver')
+INSERT INTO dbo.Roles (Name, Description, CreatedAt)
+VALUES ('Driver', 'Sofor kullanicisi', GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE Name = 'Inspector')
+INSERT INTO dbo.Roles (Name, Description, CreatedAt)
+VALUES ('Inspector', 'Denetim gorevlisi', GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE Name = 'Support')
+INSERT INTO dbo.Roles (Name, Description, CreatedAt)
+VALUES ('Support', 'Destek personeli', GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE Name = 'Finance')
+INSERT INTO dbo.Roles (Name, Description, CreatedAt)
+VALUES ('Finance', 'Finans personeli', GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE Name = 'Operator')
+INSERT INTO dbo.Roles (Name, Description, CreatedAt)
+VALUES ('Operator', 'Operasyon personeli', GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE Name = 'Reporter')
+INSERT INTO dbo.Roles (Name, Description, CreatedAt)
+VALUES ('Reporter', 'Raporlama yetkilisi', GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE Name = 'Guest')
+INSERT INTO dbo.Roles (Name, Description, CreatedAt)
+VALUES ('Guest', 'Misafir kullanici', GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE Name = 'Auditor')
+INSERT INTO dbo.Roles (Name, Description, CreatedAt)
+VALUES ('Auditor', 'Denetci rolu', GETDATE());
+
+
+/* =========================
+   2) Users
+   Not: Dummy kullanicilarin PasswordHash alani gercek giris icin degildir.
+   ========================= */
+
+DECLARE @UserRoleId INT = (SELECT RoleId FROM dbo.Roles WHERE Name = 'User');
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'ali@test.com')
+INSERT INTO dbo.Users (RoleId, FirstName, LastName, Email, PasswordHash, PhoneNumber, CreatedAt, IsActive)
+VALUES (@UserRoleId, 'Ali', 'Yilmaz', 'ali@test.com', 'DummyPasswordHash_NotForLogin', '05550000001', GETDATE(), 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'ayse@test.com')
+INSERT INTO dbo.Users (RoleId, FirstName, LastName, Email, PasswordHash, PhoneNumber, CreatedAt, IsActive)
+VALUES (@UserRoleId, 'Ayse', 'Demir', 'ayse@test.com', 'DummyPasswordHash_NotForLogin', '05550000002', GETDATE(), 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'mehmet@test.com')
+INSERT INTO dbo.Users (RoleId, FirstName, LastName, Email, PasswordHash, PhoneNumber, CreatedAt, IsActive)
+VALUES (@UserRoleId, 'Mehmet', 'Kaya', 'mehmet@test.com', 'DummyPasswordHash_NotForLogin', '05550000003', GETDATE(), 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'zeynep@test.com')
+INSERT INTO dbo.Users (RoleId, FirstName, LastName, Email, PasswordHash, PhoneNumber, CreatedAt, IsActive)
+VALUES (@UserRoleId, 'Zeynep', 'Sahin', 'zeynep@test.com', 'DummyPasswordHash_NotForLogin', '05550000004', GETDATE(), 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'burak@test.com')
+INSERT INTO dbo.Users (RoleId, FirstName, LastName, Email, PasswordHash, PhoneNumber, CreatedAt, IsActive)
+VALUES (@UserRoleId, 'Burak', 'Aydin', 'burak@test.com', 'DummyPasswordHash_NotForLogin', '05550000005', GETDATE(), 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'elif@test.com')
+INSERT INTO dbo.Users (RoleId, FirstName, LastName, Email, PasswordHash, PhoneNumber, CreatedAt, IsActive)
+VALUES (@UserRoleId, 'Elif', 'Arslan', 'elif@test.com', 'DummyPasswordHash_NotForLogin', '05550000006', GETDATE(), 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'mert@test.com')
+INSERT INTO dbo.Users (RoleId, FirstName, LastName, Email, PasswordHash, PhoneNumber, CreatedAt, IsActive)
+VALUES (@UserRoleId, 'Mert', 'Celik', 'mert@test.com', 'DummyPasswordHash_NotForLogin', '05550000007', GETDATE(), 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'deniz@test.com')
+INSERT INTO dbo.Users (RoleId, FirstName, LastName, Email, PasswordHash, PhoneNumber, CreatedAt, IsActive)
+VALUES (@UserRoleId, 'Deniz', 'Kurt', 'deniz@test.com', 'DummyPasswordHash_NotForLogin', '05550000008', GETDATE(), 1);
+
+
+/* =========================
+   3) CardTypes
+   ========================= */
+
+IF NOT EXISTS (SELECT 1 FROM dbo.CardTypes WHERE Name = 'Ogretmen Kart')
+INSERT INTO dbo.CardTypes (Name, Description, DiscountRate, IsActive, CreatedAt)
+VALUES ('Ogretmen Kart', 'Ogretmenler icin indirimli kart', 40, 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.CardTypes WHERE Name = 'Yasli Kart')
+INSERT INTO dbo.CardTypes (Name, Description, DiscountRate, IsActive, CreatedAt)
+VALUES ('Yasli Kart', 'Yasli vatandaslar icin kart', 60, 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.CardTypes WHERE Name = 'Engelli Kart')
+INSERT INTO dbo.CardTypes (Name, Description, DiscountRate, IsActive, CreatedAt)
+VALUES ('Engelli Kart', 'Engelli vatandaslar icin kart', 70, 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.CardTypes WHERE Name = 'Personel Kart')
+INSERT INTO dbo.CardTypes (Name, Description, DiscountRate, IsActive, CreatedAt)
+VALUES ('Personel Kart', 'Belediye personeli karti', 80, 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.CardTypes WHERE Name = 'Misafir Kart')
+INSERT INTO dbo.CardTypes (Name, Description, DiscountRate, IsActive, CreatedAt)
+VALUES ('Misafir Kart', 'Gecici kullanim karti', 0, 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.CardTypes WHERE Name = 'Turist Kart')
+INSERT INTO dbo.CardTypes (Name, Description, DiscountRate, IsActive, CreatedAt)
+VALUES ('Turist Kart', 'Turistler icin ulasim karti', 0, 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.CardTypes WHERE Name = 'Kurumsal Kart')
+INSERT INTO dbo.CardTypes (Name, Description, DiscountRate, IsActive, CreatedAt)
+VALUES ('Kurumsal Kart', 'Kurum calisanlari icin kart', 20, 1, GETDATE());
+
+
+/* =========================
+   4) BusLines
+   ========================= */
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BusLines WHERE LineCode = '10')
+INSERT INTO dbo.BusLines (LineCode, LineName, Description, IsActive, CreatedAt)
+VALUES ('10', 'Merkez - Otogar', 'Merkez ve otogar arasi hat', 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BusLines WHERE LineCode = '21')
+INSERT INTO dbo.BusLines (LineCode, LineName, Description, IsActive, CreatedAt)
+VALUES ('21', 'Yahya Kaptan - Merkez', 'Yahya Kaptan hatti', 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BusLines WHERE LineCode = '33')
+INSERT INTO dbo.BusLines (LineCode, LineName, Description, IsActive, CreatedAt)
+VALUES ('33', 'Derince - Izmit', 'Derince Izmit hatti', 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BusLines WHERE LineCode = '44')
+INSERT INTO dbo.BusLines (LineCode, LineName, Description, IsActive, CreatedAt)
+VALUES ('44', 'Basiskele - Izmit', 'Basiskele Izmit hatti', 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BusLines WHERE LineCode = '55')
+INSERT INTO dbo.BusLines (LineCode, LineName, Description, IsActive, CreatedAt)
+VALUES ('55', 'Golcuk - Izmit', 'Golcuk Izmit hatti', 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BusLines WHERE LineCode = '66')
+INSERT INTO dbo.BusLines (LineCode, LineName, Description, IsActive, CreatedAt)
+VALUES ('66', 'Kartepe - Izmit', 'Kartepe Izmit hatti', 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BusLines WHERE LineCode = '77')
+INSERT INTO dbo.BusLines (LineCode, LineName, Description, IsActive, CreatedAt)
+VALUES ('77', 'Cayirova - Gebze', 'Cayirova Gebze hatti', 1, GETDATE());
+
+
+/* =========================
+   5) Stations
+   ========================= */
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Stations WHERE StationName = 'Derince Merkez')
+INSERT INTO dbo.Stations (StationName, District, IsActive, CreatedAt)
+VALUES ('Derince Merkez', 'Derince', 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Stations WHERE StationName = 'Basiskele Sahil')
+INSERT INTO dbo.Stations (StationName, District, IsActive, CreatedAt)
+VALUES ('Basiskele Sahil', 'Basiskele', 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Stations WHERE StationName = 'Golcuk Merkez')
+INSERT INTO dbo.Stations (StationName, District, IsActive, CreatedAt)
+VALUES ('Golcuk Merkez', 'Golcuk', 1, GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Stations WHERE StationName = 'Kartepe Merkez')
+INSERT INTO dbo.Stations (StationName, District, IsActive, CreatedAt)
+VALUES ('Kartepe Merkez', 'Kartepe', 1, GETDATE());
+
+
+/* =========================
+   6) FareRules
+   ========================= */
+
+INSERT INTO dbo.FareRules (CardTypeId, Price, ValidFrom, ValidTo, IsActive)
+SELECT CardTypeId,
+       CASE
+           WHEN Name = 'Ogretmen Kart' THEN 12
+           WHEN Name = 'Yasli Kart' THEN 8
+           WHEN Name = 'Engelli Kart' THEN 6
+           WHEN Name = 'Personel Kart' THEN 5
+           WHEN Name = 'Misafir Kart' THEN 20
+           WHEN Name = 'Turist Kart' THEN 22
+           WHEN Name = 'Kurumsal Kart' THEN 16
+       END,
+       GETDATE(),
+       NULL,
+       1
+FROM dbo.CardTypes ct
+WHERE Name IN ('Ogretmen Kart', 'Yasli Kart', 'Engelli Kart', 'Personel Kart', 'Misafir Kart', 'Turist Kart', 'Kurumsal Kart')
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dbo.FareRules fr
+      WHERE fr.CardTypeId = ct.CardTypeId
+  );
+
+
+/* =========================
+   7) Cards
+   ========================= */
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000002')
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Tam Kart'), '41000000002', 0, 'Active', GETDATE()
+FROM dbo.Users WHERE Email = 'ali@test.com';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000003')
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Ogrenci Kart'), '41000000003', 0, 'Active', GETDATE()
+FROM dbo.Users WHERE Email = 'ayse@test.com';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000004')
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Indirimli Kart'), '41000000004', 0, 'Active', GETDATE()
+FROM dbo.Users WHERE Email = 'mehmet@test.com';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000005')
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Ogretmen Kart'), '41000000005', 0, 'Active', GETDATE()
+FROM dbo.Users WHERE Email = 'zeynep@test.com';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000006')
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Yasli Kart'), '41000000006', 0, 'Active', GETDATE()
+FROM dbo.Users WHERE Email = 'burak@test.com';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000007')
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Engelli Kart'), '41000000007', 0, 'Active', GETDATE()
+FROM dbo.Users WHERE Email = 'elif@test.com';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000008')
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Personel Kart'), '41000000008', 0, 'Active', GETDATE()
+FROM dbo.Users WHERE Email = 'mert@test.com';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000009')
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Turist Kart'), '41000000009', 0, 'Active', GETDATE()
+FROM dbo.Users WHERE Email = 'deniz@test.com';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000010')
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Kurumsal Kart'), '41000000010', 0, 'Active', GETDATE()
+FROM dbo.Users WHERE Email = 'admin@test.com';
+
+
+/* =========================
+   8) CardApplications
+   ========================= */
+
+INSERT INTO dbo.CardApplications (UserId, CardTypeId, ApplicationDate, Status, AdminNote, ApprovedAt)
+SELECT u.UserId, c.CardTypeId, GETDATE(), 'Approved', 'Dummy basvuru onaylandi.', GETDATE()
+FROM dbo.Users u
+INNER JOIN dbo.Cards c ON u.UserId = c.UserId
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM dbo.CardApplications ca
+    WHERE ca.UserId = u.UserId
+);
+
+
+/* =========================
+   9) LineStations
+   ========================= */
+
+DECLARE @StationAnitpark INT = (SELECT StationId FROM dbo.Stations WHERE StationName = 'Anitpark');
+DECLARE @StationOtogar INT = (SELECT StationId FROM dbo.Stations WHERE StationName = 'Izmit Otogar');
+DECLARE @StationDerince INT = (SELECT StationId FROM dbo.Stations WHERE StationName = 'Derince Merkez');
+DECLARE @StationBasiskele INT = (SELECT StationId FROM dbo.Stations WHERE StationName = 'Basiskele Sahil');
+DECLARE @StationGolcuk INT = (SELECT StationId FROM dbo.Stations WHERE StationName = 'Golcuk Merkez');
+DECLARE @StationKartepe INT = (SELECT StationId FROM dbo.Stations WHERE StationName = 'Kartepe Merkez');
+DECLARE @StationGebze INT = (SELECT StationId FROM dbo.Stations WHERE StationName = 'Gebze Merkez');
+
+INSERT INTO dbo.LineStations (BusLineId, StationId, StationOrder)
+SELECT BusLineId, @StationAnitpark, 1 FROM dbo.BusLines WHERE LineCode = '10'
+AND NOT EXISTS (SELECT 1 FROM dbo.LineStations ls INNER JOIN dbo.BusLines bl ON ls.BusLineId = bl.BusLineId WHERE bl.LineCode = '10' AND ls.StationId = @StationAnitpark);
+
+INSERT INTO dbo.LineStations (BusLineId, StationId, StationOrder)
+SELECT BusLineId, @StationOtogar, 2 FROM dbo.BusLines WHERE LineCode = '10'
+AND NOT EXISTS (SELECT 1 FROM dbo.LineStations ls INNER JOIN dbo.BusLines bl ON ls.BusLineId = bl.BusLineId WHERE bl.LineCode = '10' AND ls.StationId = @StationOtogar);
+
+INSERT INTO dbo.LineStations (BusLineId, StationId, StationOrder)
+SELECT BusLineId, @StationDerince, 1 FROM dbo.BusLines WHERE LineCode = '33'
+AND NOT EXISTS (SELECT 1 FROM dbo.LineStations ls INNER JOIN dbo.BusLines bl ON ls.BusLineId = bl.BusLineId WHERE bl.LineCode = '33' AND ls.StationId = @StationDerince);
+
+INSERT INTO dbo.LineStations (BusLineId, StationId, StationOrder)
+SELECT BusLineId, @StationAnitpark, 2 FROM dbo.BusLines WHERE LineCode = '33'
+AND NOT EXISTS (SELECT 1 FROM dbo.LineStations ls INNER JOIN dbo.BusLines bl ON ls.BusLineId = bl.BusLineId WHERE bl.LineCode = '33' AND ls.StationId = @StationAnitpark);
+
+INSERT INTO dbo.LineStations (BusLineId, StationId, StationOrder)
+SELECT BusLineId, @StationBasiskele, 1 FROM dbo.BusLines WHERE LineCode = '44'
+AND NOT EXISTS (SELECT 1 FROM dbo.LineStations ls INNER JOIN dbo.BusLines bl ON ls.BusLineId = bl.BusLineId WHERE bl.LineCode = '44' AND ls.StationId = @StationBasiskele);
+
+INSERT INTO dbo.LineStations (BusLineId, StationId, StationOrder)
+SELECT BusLineId, @StationOtogar, 2 FROM dbo.BusLines WHERE LineCode = '44'
+AND NOT EXISTS (SELECT 1 FROM dbo.LineStations ls INNER JOIN dbo.BusLines bl ON ls.BusLineId = bl.BusLineId WHERE bl.LineCode = '44' AND ls.StationId = @StationOtogar);
+
+
+/* =========================
+   10) Payments
+   Trigger, BalanceLoad tipindeki odemeler icin kart bakiyesini artirir.
+   ========================= */
+
+INSERT INTO dbo.Payments (CardId, Amount, PaymentMethod, PaymentType, Status, PaymentDate, Description)
+SELECT CardId, 100, 'CreditCard', 'BalanceLoad', 'Success', GETDATE(), 'Dummy bakiye yukleme'
+FROM dbo.Cards c
+WHERE CardNumber IN ('41000000002', '41000000003', '41000000004', '41000000005', '41000000006', '41000000007', '41000000008', '41000000009', '41000000010')
+  AND NOT EXISTS (
+      SELECT 1 FROM dbo.Payments p
+      WHERE p.CardId = c.CardId
+        AND p.Description = 'Dummy bakiye yukleme'
+  );
+
+
+/* =========================
+   11) Trips
+   Trigger, Completed yolculuklarda kart bakiyesinden FareAmount kadar duser.
+   ========================= */
+
+INSERT INTO dbo.Trips (CardId, BusLineId, StationId, FareAmount, TripDate, Status)
+SELECT c.CardId, bl.BusLineId, s.StationId, 10, GETDATE(), 'Completed'
+FROM dbo.Cards c
+CROSS JOIN dbo.BusLines bl
+CROSS JOIN dbo.Stations s
+WHERE c.CardNumber = '41000000002'
+  AND bl.LineCode = '10'
+  AND s.StationName = 'Anitpark'
+  AND NOT EXISTS (SELECT 1 FROM dbo.Trips WHERE CardId = c.CardId AND BusLineId = bl.BusLineId AND StationId = s.StationId);
+
+INSERT INTO dbo.Trips (CardId, BusLineId, StationId, FareAmount, TripDate, Status)
+SELECT c.CardId, bl.BusLineId, s.StationId, 10, GETDATE(), 'Completed'
+FROM dbo.Cards c
+CROSS JOIN dbo.BusLines bl
+CROSS JOIN dbo.Stations s
+WHERE c.CardNumber = '41000000003'
+  AND bl.LineCode = '33'
+  AND s.StationName = 'Derince Merkez'
+  AND NOT EXISTS (SELECT 1 FROM dbo.Trips WHERE CardId = c.CardId AND BusLineId = bl.BusLineId AND StationId = s.StationId);
+
+INSERT INTO dbo.Trips (CardId, BusLineId, StationId, FareAmount, TripDate, Status)
+SELECT c.CardId, bl.BusLineId, s.StationId, 10, GETDATE(), 'Completed'
+FROM dbo.Cards c
+CROSS JOIN dbo.BusLines bl
+CROSS JOIN dbo.Stations s
+WHERE c.CardNumber = '41000000004'
+  AND bl.LineCode = '44'
+  AND s.StationName = 'Basiskele Sahil'
+  AND NOT EXISTS (SELECT 1 FROM dbo.Trips WHERE CardId = c.CardId AND BusLineId = bl.BusLineId AND StationId = s.StationId);
+
+
+/* =========================
+   12) LostCardReports
+   Trigger, kayip bildirimi yapilan kartin Status degerini Lost yapar.
+   ========================= */
+
+INSERT INTO dbo.LostCardReports (CardId, UserId, ReportDate, Reason, Status)
+SELECT c.CardId, c.UserId, GETDATE(), 'Dummy kayip kart bildirimi', 'Reported'
+FROM dbo.Cards c
+WHERE c.CardNumber IN ('41000000008', '41000000009')
+  AND NOT EXISTS (
+      SELECT 1 FROM dbo.LostCardReports lcr
+      WHERE lcr.CardId = c.CardId
+        AND lcr.Reason = 'Dummy kayip kart bildirimi'
+  );
+
+
+/* =========================
+   13) CardSubscriptions
+   ========================= */
+
+INSERT INTO dbo.CardSubscriptions (CardId, SubscriptionPlanId, StartDate, EndDate, RemainingRideCount, Status, CreatedAt)
+SELECT c.CardId, sp.SubscriptionPlanId, GETDATE(), DATEADD(DAY, sp.ValidityDays, GETDATE()), sp.RideCount, 'Active', GETDATE()
+FROM dbo.Cards c
+INNER JOIN dbo.SubscriptionPlans sp ON c.CardTypeId = sp.CardTypeId
+WHERE c.CardNumber IN ('41896505073', '41000000003', '41000000004')
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dbo.CardSubscriptions cs
+      WHERE cs.CardId = c.CardId
+        AND cs.Status = 'Active'
+  );
+
+=========================================================
+SQL Betikleri sonu
+=========================================================

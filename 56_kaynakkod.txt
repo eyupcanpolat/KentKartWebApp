@@ -1,0 +1,133 @@
+=========================================================
+KentKart Web App - Kaynak Kod Aciklamasi
+=========================================================
+
+Projenin tum kaynak kodlari GitHub reposunda yer almaktadir:
+https://github.com/eyupcanpolat/KentKartWebApp
+
+Tam kaynak kod oldukca uzun oldugu icin bu dosyada projenin klasor
+yapisi ve onemli dosyalari listelenmistir. Eksiksiz ve guncel kaynak
+koda GitHub reposundan ulasabilirsiniz.
+
+=========================================================
+1) ANA KLASORLER
+=========================================================
+
+KentKart.Api/
+    ASP.NET Core Web API ile yazilmis backend projesi.
+    JWT tabanli kimlik dogrulama kullanan REST API. Entity Framework
+    Core ile SQL Server veritabanina erisir. Controllers, Services,
+    Entities, DTOs, Data (DbContext), Helpers ve Migrations
+    klasorlerini icerir.
+
+Frontend/
+    Saf HTML / CSS / JavaScript ile yazilmis, herhangi bir framework
+    kullanmayan tek sayfalik arayuz. Giris yapan kullanicinin rolune
+    gore (Guest / Admin / User) degisen role-based bir gosterge
+    panelidir.
+
+DatabaseScripts/
+    SQL Server tarafinda calisan view, trigger, stored procedure,
+    test sorgulari ve ornek (dummy) verileri iceren SQL dosyalari.
+
+docs/
+    ER diyagrami, sistem mimarisi, akis diyagrami (.mmd) ve ekran
+    goruntuleri gibi dokumantasyon gorsellerini icerir.
+
+README.md
+    Projenin genel tanimi, teknolojiler, roller, veritabani tasarimi,
+    kurulum ve calistirma adimlari gibi tum dokumantasyonu icerir.
+
+=========================================================
+2) BACKEND - KentKart.Api (ASP.NET Core Web API)
+=========================================================
+
+Backend, ASP.NET Core Web API olarak gelistirilmistir. Istek akisi
+asagidaki gibidir:
+
+    Frontend -> API -> Controllers -> Services -> EF Core -> SQL Server
+
+Onemli klasor ve dosyalar:
+
+  KentKart.Api/Controllers
+      Gelen HTTP isteklerini karsilayan controller siniflari:
+        - AuthController             (kayit / giris, JWT token)
+        - AdminController            (hat, durak, ucret kurallari)
+        - CardsController            (kart goruntuleme)
+        - CardApplicationsController (kart basvurulari)
+        - PaymentsController         (bakiye yukleme / odeme gecmisi)
+        - TripsController            (yolculuk olusturma / listeleme)
+        - LostCardReportsController  (kayip kart bildirimi)
+        - SubscriptionsController    (abonman planlari / satin alma)
+        - ReportsController          (raporlar)
+
+  KentKart.Api/Services
+      Is kurallarinin calistirildigi servis siniflari. Veri erisimi,
+      servis siniflari icinden dogrudan EF Core DbContext ile yapilir
+      (ayri bir Repository katmani kullanilmamistir).
+
+  KentKart.Api/Data/KentKartDbContext.cs
+      Entity Framework Core DbContext sinifi. Tablolarin (DbSet)
+      ve iliskilerin tanimlandigi merkezi veri erisim noktasi.
+
+  KentKart.Api/Entities
+      Veritabani tablolarini temsil eden entity siniflari:
+        Roles, Users, CardTypes, CardApplications, Cards, Payments,
+        BusLines, Stations, LineStations, FareRules, Trips,
+        LostCardReports, SubscriptionPlans, CardSubscriptions.
+
+  KentKart.Api/DTOs
+      Istek/yanit verilerini tasiyan Data Transfer Object siniflari.
+
+  KentKart.Api/Helpers
+      JWT ve yardimci islemler icin kullanilan siniflar.
+
+  KentKart.Api/Migrations
+      EF Core veritabani migration dosyalari.
+
+  KentKart.Api/appsettings.json
+      Veritabani baglanti dizesi (DefaultConnection) ve JWT ayarlari.
+
+=========================================================
+3) FRONTEND - Frontend (HTML / CSS / JS)
+=========================================================
+
+Frontend, herhangi bir framework kullanilmadan saf HTML / CSS /
+JavaScript ile yazilmistir. Role gore degisen tek sayfalik bir
+arayuzdur.
+
+Onemli dosyalar:
+
+  Frontend/index.html
+      Uygulamanin tek sayfalik HTML arayuzu. Guest / Admin / User
+      panellerini ve islem kartlarini icerir.
+
+  Frontend/style.css
+      Koyu (dark) premium dashboard temasi ve arayuz stilleri.
+
+  Frontend/app.js
+      API ile iletisim (fetch), JWT token yonetimi, role-based
+      ekran kontrolu ve islem sonuclarinin gosterilmesi.
+
+=========================================================
+4) VERITABANI SCRIPTLERI - DatabaseScripts
+=========================================================
+
+  DatabaseScripts/01_Views.sql            (raporlama view'lari)
+  DatabaseScripts/02_Triggers.sql         (otomatik trigger'lar)
+  DatabaseScripts/03_StoredProcedures.sql (hazir rapor proc'lari)
+  DatabaseScripts/04_TestQueries.sql      (test sorgulari)
+  DatabaseScripts/05_DummyData.sql        (ornek veriler)
+
+=========================================================
+5) DOKUMANTASYON - README ve docs
+=========================================================
+
+  README.md   (proje dokumantasyonu)
+  docs/       (ER diyagrami, mimari, akis diyagrami ve ekran
+               goruntuleri)
+
+=========================================================
+Not: Bu dosya yalnizca proje yapisini ozetler. Eksiksiz kaynak kod
+GitHub reposunda bulunmaktadir.
+=========================================================

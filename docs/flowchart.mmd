@@ -1,0 +1,36 @@
+flowchart TD
+    Start(["Kullanici siteye girer"]) --> AuthScreen["Login / Register ekrani"]
+    AuthScreen --> Token["JWT token alinir"]
+    Token --> RoleCheck{"Role kontrolu"}
+
+    RoleCheck -->|Admin| AdminDash["Admin Dashboard"]
+    RoleCheck -->|User| UserDash["User Dashboard"]
+
+    subgraph AdminOps["Admin Islemleri"]
+        A1["Hat yonetimi"]
+        A2["Durak yonetimi"]
+        A3["Kartlari goruntuleme"]
+        A4["Basvurulari goruntuleme"]
+        A5["Kayip kart bildirimleri"]
+        A6["Abonman planlari"]
+        A7["Raporlar"]
+    end
+
+    subgraph UserOps["User Islemleri"]
+        U1["Kartlarimi goruntuleme"]
+        U2["Kart basvurusu"]
+        U3["Bakiye yukleme"]
+        U4["Yolculuk olusturma"]
+        U5["Abonman planlari"]
+        U6["Kayip kart bildirimi"]
+    end
+
+    AdminDash --> AdminOps
+    UserDash --> UserOps
+
+    AdminOps --> ApiCall["Istek API'ye gider"]
+    UserOps --> ApiCall
+
+    ApiCall --> DbUpdate["Veritabani guncellenir / veri doner"]
+    DbUpdate --> Result["Sonuc frontend'de ilgili kart altinda gosterilir"]
+    Result --> End(["Bitis"])

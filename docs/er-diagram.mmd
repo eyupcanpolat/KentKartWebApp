@@ -1,0 +1,157 @@
+erDiagram
+    Roles ||--o{ Users : "RoleId"
+    Users ||--o{ Cards : "UserId"
+    Users ||--o{ CardApplications : "UserId"
+    Users ||--o{ LostCardReports : "UserId"
+
+    CardTypes ||--o{ Cards : "CardTypeId"
+    CardTypes ||--o{ CardApplications : "CardTypeId"
+    CardTypes ||--o{ FareRules : "CardTypeId"
+    CardTypes ||--o{ SubscriptionPlans : "CardTypeId"
+
+    Cards ||--o{ Payments : "CardId"
+    Cards ||--o{ Trips : "CardId"
+    Cards ||--o{ LostCardReports : "CardId"
+    Cards ||--o{ CardSubscriptions : "CardId"
+
+    BusLines ||--o{ LineStations : "BusLineId"
+    BusLines ||--o{ Trips : "BusLineId"
+
+    Stations ||--o{ LineStations : "StationId"
+    Stations ||--o{ Trips : "StationId"
+
+    SubscriptionPlans ||--o{ CardSubscriptions : "SubscriptionPlanId"
+
+    Roles {
+        int RoleId PK
+        string Name
+        string Description
+        datetime CreatedAt
+    }
+
+    Users {
+        int UserId PK
+        int RoleId FK
+        string FirstName
+        string LastName
+        string Email
+        string PasswordHash
+        string PhoneNumber
+        datetime CreatedAt
+        bool IsActive
+    }
+
+    CardTypes {
+        int CardTypeId PK
+        string Name
+        string Description
+        decimal DiscountRate
+        bool IsActive
+        datetime CreatedAt
+    }
+
+    CardApplications {
+        int CardApplicationId PK
+        int UserId FK
+        int CardTypeId FK
+        datetime ApplicationDate
+        string Status
+        string AdminNote
+        datetime ApprovedAt
+    }
+
+    Cards {
+        int CardId PK
+        int UserId FK
+        int CardTypeId FK
+        string CardNumber
+        decimal Balance
+        string Status
+        datetime CreatedAt
+    }
+
+    Payments {
+        int PaymentId PK
+        int CardId FK
+        decimal Amount
+        string PaymentMethod
+        string PaymentType
+        string Status
+        datetime PaymentDate
+        string Description
+    }
+
+    BusLines {
+        int BusLineId PK
+        string LineCode
+        string LineName
+        string Description
+        bool IsActive
+        datetime CreatedAt
+    }
+
+    Stations {
+        int StationId PK
+        string StationName
+        string District
+        bool IsActive
+        datetime CreatedAt
+    }
+
+    LineStations {
+        int LineStationId PK
+        int BusLineId FK
+        int StationId FK
+        int StationOrder
+    }
+
+    FareRules {
+        int FareRuleId PK
+        int CardTypeId FK
+        decimal Price
+        datetime ValidFrom
+        datetime ValidTo
+        bool IsActive
+    }
+
+    Trips {
+        int TripId PK
+        int CardId FK
+        int BusLineId FK
+        int StationId FK
+        decimal FareAmount
+        datetime TripDate
+        string Status
+    }
+
+    LostCardReports {
+        int LostCardReportId PK
+        int CardId FK
+        int UserId FK
+        datetime ReportDate
+        string Reason
+        string Status
+    }
+
+    SubscriptionPlans {
+        int SubscriptionPlanId PK
+        string Name
+        string Description
+        int CardTypeId FK
+        decimal Price
+        int RideCount
+        int ValidityDays
+        bool IsActive
+        datetime CreatedAt
+    }
+
+    CardSubscriptions {
+        int CardSubscriptionId PK
+        int CardId FK
+        int SubscriptionPlanId FK
+        datetime StartDate
+        datetime EndDate
+        int RemainingRideCount
+        string Status
+        datetime CreatedAt
+    }

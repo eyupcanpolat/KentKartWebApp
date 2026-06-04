@@ -1,0 +1,43 @@
+flowchart TB
+    subgraph Kullanicilar["Kullanici Rolleri"]
+        Guest["Guest (Ziyaretci)"]
+        User["User (Kullanici)"]
+        Admin["Admin (Yonetici)"]
+    end
+
+    subgraph FE["Frontend (HTML / CSS / JS)"]
+        IndexHtml["index.html"]
+        StyleCss["style.css"]
+        AppJs["app.js (fetch + JWT)"]
+    end
+
+    subgraph API["ASP.NET Core Web API"]
+        Swagger["Swagger / OpenAPI"]
+        JWT["JWT Authentication"]
+        Controllers["Controllers\n(Auth, Cards, CardApplications,\nPayments, Trips, LostCardReports,\nSubscriptions, Reports, Admin)"]
+        Services["Services\n(AuthService, CardService,\nPaymentService, TripService,\nSubscriptionService, ...)"]
+        EFCore["Entity Framework Core\n(KentKartDbContext)"]
+    end
+
+    subgraph DB["SQL Server Database"]
+        Tables["Tablolar\n(Users, Roles, Cards, CardTypes,\nTrips, Payments, BusLines, Stations, ...)"]
+        DbObjects["Views / Triggers / Stored Procedures"]
+        Scripts["DatabaseScripts (*.sql)"]
+    end
+
+    Guest --> IndexHtml
+    User --> IndexHtml
+    Admin --> IndexHtml
+
+    IndexHtml --- StyleCss
+    IndexHtml --> AppJs
+
+    AppJs -->|"HTTP / JSON + Bearer Token"| Controllers
+    JWT -. "token dogrulama" .-> Controllers
+    Swagger -. "API dokumantasyonu" .-> Controllers
+
+    Controllers --> Services
+    Services --> EFCore
+    EFCore -->|"SQL"| Tables
+    Tables --- DbObjects
+    Scripts -. "kurulum / seed" .-> DB

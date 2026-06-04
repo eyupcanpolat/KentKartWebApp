@@ -1,0 +1,33 @@
+=========================================================
+KentKart Web App - GitHub
+=========================================================
+
+GitHub Repo Linki:
+https://github.com/eyupcanpolat/KentKartWebApp
+
+=========================================================
+
+Aciklama:
+KentKartWebApp projesinin kaynak kodlari, SQL scriptleri, frontend
+dosyalari, README ve dokumantasyon gorselleri bu repoda
+bulunmaktadir.
+
+Repo icerigi:
+  - KentKart.Api/     : ASP.NET Core Web API (backend)
+  - Frontend/         : HTML / CSS / JS arayuz
+  - DatabaseScripts/  : SQL view, trigger, stored procedure, test ve
+                        ornek veri scriptleri
+  - docs/             : Diyagramlar ve ekran goruntuleri
+  - README.md         : Proje dokumantasyonu
+
+Repoyu klonlamak icin:
+  git clone https://github.com/eyupcanpolat/KentKartWebApp
+
+=========================================================
+
+Referans:
+Projeyle ilgili ayrintili bilgi (proje ozeti, teknolojiler, roller,
+veritabani tasarimi, kurulum ve calistirma adimlari) icin repodaki
+README.md dosyasina bakiniz.
+
+=========================================================
