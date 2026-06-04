@@ -2,74 +2,275 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>KentKart Web App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KentKart Dashboard</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<header class="topbar">
+    <div class="topbar-text">
+        <p class="eyebrow">KentKart Yönetim Paneli</p>
+        <h1>KentKart Dashboard</h1>
+        <p class="subtitle">Toplu taşıma kart başvuru, bakiye ve yönetim işlemleri için web arayüzü</p>
+    </div>
 
-<header>
-    <h1>KentKart Web App</h1>
-    <p>Toplu taşıma kart başvuru, bakiye ve yönetim sistemi</p>
-    <div id="userStatus" class="status guest">Giriş yapılmadı</div>
+    <div class="topbar-actions">
+        <div id="userStatus" class="status guest">Giriş yapılmadı</div>
+
+        <div class="profile-menu">
+            <button id="profileButton" class="profile-button" type="button" onclick="toggleProfileMenu(event)">
+                <span id="profileAvatar" class="avatar">M</span>
+                <span>
+                    <span id="profileRole" class="profile-role">Misafir</span>
+                    <span id="profileEmail" class="profile-email">Oturum yok</span>
+                </span>
+            </button>
+
+            <div id="profileDropdown" class="profile-dropdown">
+                <div id="profileSummary" class="profile-summary">
+                    <strong>Misafir kullanıcı</strong>
+                    <p>Giriş yaparak işlemlere erişebilirsiniz.</p>
+                </div>
+                <div class="dropdown-actions">
+                    <button class="dropdown-button" type="button" onclick="openSettingsModal()">Ayarlar</button>
+                    <button id="dropdownLogoutButton" class="dropdown-button danger" type="button" onclick="logout()">Çıkış Yap</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </header>
 
-<main>
-    <section class="card">
-        <h2>Giriş Yap</h2>
-        <input id="loginEmail" type="email" placeholder="E-posta">
-        <input id="loginPassword" type="password" placeholder="Şifre">
-        <button onclick="login()">Giriş Yap</button>
-        <button class="gray" onclick="logout()">Çıkış Yap</button>
-        <p id="loginResult"></p>
+<main class="dashboard">
+    <section id="guestSection" class="role-section wide">
+        <section class="panel welcome-panel">
+            <span class="section-label">Hoş Geldiniz</span>
+            <h2>KentKart işlemlerini kullanmak için giriş yapınız veya kayıt olunuz.</h2>
+            <p>Giriş yaptıktan sonra rolünüze uygun yönetim veya kullanıcı işlemleri otomatik olarak açılır.</p>
+        </section>
+
+        <div class="auth-grid">
+            <section class="panel auth-panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="section-label">Oturum</span>
+                        <h2>Giriş Yap</h2>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <label for="loginEmail">E-posta</label>
+                    <input id="loginEmail" type="email" placeholder="ornek@mail.com">
+
+                    <label for="loginPassword">Şifre</label>
+                    <input id="loginPassword" type="password" placeholder="Şifreniz">
+                </div>
+
+                <div class="button-row">
+                    <button onclick="login()">Giriş Yap</button>
+                    <button class="secondary" onclick="logout()">Çıkış Yap</button>
+                </div>
+                <p id="loginResult" class="message"></p>
+            </section>
+
+            <section class="panel auth-panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="section-label">Yeni Kullanıcı</span>
+                        <h2>Kayıt Ol</h2>
+                    </div>
+                </div>
+
+                <div class="form-grid two-column">
+                    <div>
+                        <label for="registerFirstName">Ad</label>
+                        <input id="registerFirstName" type="text" placeholder="Ad">
+                    </div>
+                    <div>
+                        <label for="registerLastName">Soyad</label>
+                        <input id="registerLastName" type="text" placeholder="Soyad">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <label for="registerEmail">E-posta</label>
+                    <input id="registerEmail" type="email" placeholder="ornek@mail.com">
+
+                    <label for="registerPassword">Şifre</label>
+                    <input id="registerPassword" type="password" placeholder="Şifre">
+
+                    <label for="registerPhoneNumber">Telefon</label>
+                    <input id="registerPhoneNumber" type="text" placeholder="Opsiyonel">
+                </div>
+
+                <button onclick="register()">Kayıt Ol</button>
+                <p id="registerResult" class="message"></p>
+            </section>
+        </div>
     </section>
 
-    <section class="card">
-        <h2>Kayıt Ol</h2>
-        <input id="registerFirstName" type="text" placeholder="Ad">
-        <input id="registerLastName" type="text" placeholder="Soyad">
-        <input id="registerEmail" type="email" placeholder="E-posta">
-        <input id="registerPassword" type="password" placeholder="Şifre">
-        <input id="registerPhoneNumber" type="text" placeholder="Telefon (opsiyonel)">
-        <button onclick="register()">Kayıt Ol</button>
-        <p id="registerResult"></p>
+    <section id="adminSection" class="role-section wide hidden">
+        <section class="panel dashboard-title">
+            <span class="section-label">Admin Dashboard</span>
+            <h2>Yönetim İşlemleri</h2>
+            <p>Hat, durak ve yönetim kontrolleri admin rolüyle kullanılabilir.</p>
+        </section>
+
+        <section class="panel">
+            <div class="action-grid">
+                <article class="action-card">
+                    <h3>Hat Yönetimi</h3>
+                    <p>Otobüs hatlarını görüntüleyin veya yeni hat tanımı ekleyin.</p>
+                    <div class="button-row">
+                        <button onclick="getBusLines()">Hatları Görüntüle</button>
+                        <button class="secondary" onclick="toggleForm('busLineForm')">Yeni Hat Ekle</button>
+                    </div>
+                    <div id="busLineForm" class="inline-form hidden">
+                        <input id="newLineCode" type="text" placeholder="Hat kodu">
+                        <input id="newLineName" type="text" placeholder="Hat adı">
+                        <input id="newLineDescription" type="text" placeholder="Açıklama">
+                        <button onclick="createBusLine()">Kaydet</button>
+                    </div>
+                    <div id="busLineResult" class="local-result empty">Hat işlemi sonucu burada görünecek.</div>
+                </article>
+
+                <article class="action-card">
+                    <h3>Durak Yönetimi</h3>
+                    <p>Durakları listeleyin veya yeni durak bilgisini sisteme ekleyin.</p>
+                    <div class="button-row">
+                        <button onclick="getStations()">Durakları Görüntüle</button>
+                        <button class="secondary" onclick="toggleForm('stationForm')">Yeni Durak Ekle</button>
+                    </div>
+                    <div id="stationForm" class="inline-form hidden">
+                        <input id="newStationName" type="text" placeholder="Durak adı">
+                        <input id="newStationDistrict" type="text" placeholder="Konum / açıklama">
+                        <button onclick="createStation()">Kaydet</button>
+                    </div>
+                    <div id="stationResult" class="local-result empty">Durak işlemi sonucu burada görünecek.</div>
+                </article>
+
+                <article class="action-card">
+                    <h3>Raporlar / Yönetim</h3>
+                    <p>Raporlama işlemleri için backend tarafındaki rapor endpointleri kullanılabilir.</p>
+                    <div class="button-row">
+                        <button onclick="getAdminReports()">Raporları Görüntüle</button>
+                    </div>
+                    <div id="reportResult" class="local-result empty">Rapor sonucu burada görünecek.</div>
+                </article>
+            </div>
+        </section>
+
+        <section class="panel developer-panel">
+            <div class="panel-header split">
+                <div>
+                    <span class="section-label">Sunum ve Kontrol</span>
+                    <h2>Geliştirici Test Alanı</h2>
+                </div>
+                <button id="developerToggleButton" class="secondary" onclick="toggleDeveloperPanel()">Geliştirici Test Alanını Aç</button>
+            </div>
+
+            <div id="developerContent" class="developer-content collapsed">
+                <div class="api-grid">
+                    <div>
+                        <label for="customMethod">HTTP Metodu</label>
+                        <select id="customMethod">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="customEndpoint">Endpoint</label>
+                        <input id="customEndpoint" type="text" placeholder="/Admin/bus-lines">
+                    </div>
+                </div>
+
+                <label for="customBody">JSON Body</label>
+                <textarea id="customBody" placeholder='{"lineCode":"99","lineName":"Test Hattı"}'></textarea>
+
+                <button onclick="customRequest()">İstek Gönder</button>
+                <pre id="customResult" class="code-result">API sonucu burada görünecek.</pre>
+
+                <div class="manual-row developer-quick-test">
+                    <input id="manualEndpoint" type="text" placeholder="/Admin/bus-lines">
+                    <button onclick="customGet()">Hızlı Test Et</button>
+                </div>
+                <pre id="manualResult" class="code-result">Manuel test sonucu burada görünecek.</pre>
+            </div>
+        </section>
     </section>
 
-    <section class="card wide">
-        <h2>Admin Listeleme</h2>
-        <button onclick="getBusLines()">Hatları Listele</button>
-        <button onclick="getStations()">Durakları Listele</button>
-        <pre id="adminResult">Admin API sonucu burada görünecek.</pre>
-    </section>
+    <section id="userSection" class="role-section wide hidden">
+        <section class="panel dashboard-title">
+            <span class="section-label">Kullanıcı Dashboard</span>
+            <h2>Kart ve Ulaşım İşlemleri</h2>
+            <p>Kendi kartlarınızı, abonmanları ve ulaşım işlemlerinizi bu alandan yönetebilirsiniz.</p>
+        </section>
 
-    <section class="card wide">
-        <h2>API İşlem Paneli</h2>
+        <section class="panel">
+            <div class="action-grid">
+                <article class="action-card">
+                    <h3>Kartlarım</h3>
+                    <p>Kayıtlı kartlarınızı ve bakiye durumunuzu görüntüleyin.</p>
+                    <button onclick="getMyCards()">Kartlarımı Görüntüle</button>
+                    <button onclick="showDtoInfo('cardResult')">Kart Başvurusu Yap</button>
+                    <div id="cardResult" class="local-result empty">Kart işlemi sonucu burada görünecek.</div>
+                </article>
 
-        <label>HTTP Metodu</label>
-        <select id="customMethod">
-            <option value="GET">GET</option>
-            <option value="POST">POST</option>
-            <option value="PUT">PUT</option>
-            <option value="DELETE">DELETE</option>
-        </select>
+                <article class="action-card">
+                    <h3>Bakiye ve Yolculuk</h3>
+                    <p>Kart numarası, tutar, hat ve durak bilgileriyle işlem yapılabilir.</p>
+                    <button onclick="showDtoInfo('balanceTripResult')">Bakiye Yükle</button>
+                    <button onclick="showDtoInfo('balanceTripResult')">Yolculuk Yap</button>
+                    <div id="balanceTripResult" class="local-result empty">Bakiye ve yolculuk sonucu burada görünecek.</div>
+                </article>
 
-        <label>Endpoint</label>
-        <input id="customEndpoint" type="text" placeholder="/Admin/bus-lines">
-
-        <label>JSON Body</label>
-        <textarea id="customBody" placeholder='{"lineCode":"99","lineName":"Test Hattı"}'></textarea>
-
-        <button onclick="customRequest()">İstek Gönder</button>
-
-        <pre id="customResult">API sonucu burada görünecek.</pre>
-    </section>
-
-    <section class="card wide">
-        <h2>Manuel API Test</h2>
-        <input id="manualEndpoint" type="text" placeholder="/Admin/bus-lines">
-        <button onclick="customGet()">GET İsteği Gönder</button>
-        <pre id="manualResult">Manuel API sonucu burada görünecek.</pre>
+                <article class="action-card">
+                    <h3>Abonman ve Kayıp Kart</h3>
+                    <p>Abonman planlarını inceleyin veya kayıp kart bildirimi sürecini başlatın.</p>
+                    <button onclick="getSubscriptionPlans()">Abonman Planlarını Gör</button>
+                    <button onclick="showDtoInfo('subscriptionLostResult')">Kayıp Kart Bildir</button>
+                    <div id="subscriptionLostResult" class="local-result empty">Abonman ve kayıp kart sonucu burada görünecek.</div>
+                </article>
+            </div>
+        </section>
     </section>
 </main>
+
+<div id="settingsModal" class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <div>
+                <span class="section-label">Profil</span>
+                <h2>Ayarlar</h2>
+            </div>
+            <button class="icon-button" type="button" onclick="closeSettingsModal()">×</button>
+        </div>
+
+        <div class="settings-list">
+            <div>
+                <span>Kullanıcı rolü</span>
+                <strong id="settingsRole">Misafir</strong>
+            </div>
+            <div>
+                <span>Token durumu</span>
+                <strong id="settingsTokenStatus">Yok</strong>
+            </div>
+            <div>
+                <span>API adresi</span>
+                <strong id="settingsApiUrl">https://localhost:7273/api</strong>
+            </div>
+        </div>
+
+        <div class="theme-box">
+            <label>Tema seçimi</label>
+            <div class="theme-options">
+                <button id="lightThemeButton" type="button" onclick="setTheme('light')">Açık Tema</button>
+                <button id="darkThemeButton" class="secondary" type="button" onclick="setTheme('dark')">Koyu Tema</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <footer>
     <p>VTYS Projesi - KentKart</p>
