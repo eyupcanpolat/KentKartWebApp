@@ -42,13 +42,19 @@
 
 <main class="dashboard">
     <section id="guestSection" class="role-section wide">
-        <section class="panel welcome-panel">
+        <section class="guest-layout">
+        <section class="panel welcome-panel guest-intro">
             <span class="section-label">Hoş Geldiniz</span>
             <h2>KentKart işlemlerini kullanmak için giriş yapınız veya kayıt olunuz.</h2>
             <p>Giriş yaptıktan sonra rolünüze uygun yönetim veya kullanıcı işlemleri otomatik olarak açılır.</p>
+            <div class="hero-highlights">
+                <span>Kart yaşam döngüsü</span>
+                <span>Rol bazlı erişim</span>
+                <span>Operasyon takibi</span>
+            </div>
         </section>
 
-        <div class="auth-grid">
+        <div class="auth-stack">
             <section class="panel auth-panel">
                 <div class="panel-header">
                     <div>
@@ -106,6 +112,38 @@
                 <p id="registerResult" class="message"></p>
             </section>
         </div>
+        </section>
+
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <span class="section-label">Sistem Özellikleri</span>
+                    <h2>Günlük ulaşım işlemleri için hazır modüller</h2>
+                </div>
+            </div>
+            <div class="feature-grid">
+                <article class="summary-card">
+                    <span class="summary-icon">KB</span>
+                    <h3>Kart başvurusu</h3>
+                    <p>Kullanıcılar uygun kart tipi için başvuru gönderebilir.</p>
+                </article>
+                <article class="summary-card">
+                    <span class="summary-icon">BY</span>
+                    <h3>Bakiye yükleme</h3>
+                    <p>Kart seçimi ve tutar bilgisiyle bakiye işlemi yapılır.</p>
+                </article>
+                <article class="summary-card">
+                    <span class="summary-icon">YT</span>
+                    <h3>Yolculuk takibi</h3>
+                    <p>Kart, hat ve durak bilgisiyle yolculuk kayıtları oluşturulur.</p>
+                </article>
+                <article class="summary-card">
+                    <span class="summary-icon">YP</span>
+                    <h3>Yönetim paneli</h3>
+                    <p>Admin rolü hat, durak ve rapor ekranlarına erişebilir.</p>
+                </article>
+            </div>
+        </section>
     </section>
 
     <section id="adminSection" class="role-section wide hidden">
@@ -113,6 +151,80 @@
             <span class="section-label">Admin Dashboard</span>
             <h2>Yönetim İşlemleri</h2>
             <p>Hat, durak ve yönetim kontrolleri admin rolüyle kullanılabilir.</p>
+        </section>
+
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <span class="section-label">Yönetim Özeti</span>
+                    <h2>Operasyon modülleri</h2>
+                </div>
+            </div>
+            <div class="summary-grid">
+                <article class="summary-card compact">
+                    <span class="summary-icon">HY</span>
+                    <h3>Hat Yönetimi</h3>
+                    <p>Otobüs hatları ve aktiflik durumları yönetilir.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">DY</span>
+                    <h3>Durak Yönetimi</h3>
+                    <p>Durak kayıtları ve konum açıklamaları takip edilir.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">KY</span>
+                    <h3>Kart Yönetimi</h3>
+                    <p>Kart, başvuru ve kullanıcı kart süreçleri izlenir.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">KB</span>
+                    <h3>Kart Başvuruları</h3>
+                    <p>Bekleyen kart başvuruları admin ekranından takip edilir.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">RP</span>
+                    <h3>Raporlama</h3>
+                    <p>Gelir, kullanım ve dashboard raporları görüntülenir.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">OY</span>
+                    <h3>Ödeme/Yolculuk</h3>
+                    <p>Bakiye ve yolculuk hareketleri sistemde işlenir.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">KK</span>
+                    <h3>Kayıp Kart</h3>
+                    <p>Kayıp kart bildirimleri yönetim ekranında izlenir.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">AB</span>
+                    <h3>Abonman</h3>
+                    <p>Planlar ve abonman kullanımları takip edilir.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <span class="section-label">Sistem Modülleri</span>
+                    <h2>Platform bileşenleri</h2>
+                </div>
+            </div>
+            <div class="module-grid">
+                <span>Kullanıcılar</span>
+                <span>Roller</span>
+                <span>Kartlar</span>
+                <span>Kart Başvuruları</span>
+                <span>Ödemeler</span>
+                <span>Yolculuklar</span>
+                <span>Raporlar</span>
+                <span>Kayıp Kartlar</span>
+                <span>Abonmanlar</span>
+                <span>Hatlar</span>
+                <span>Duraklar</span>
+                <span>Ücret Kuralları</span>
+            </div>
         </section>
 
         <section class="panel">
@@ -155,6 +267,51 @@
                         <button onclick="getAdminReports()">Raporları Görüntüle</button>
                     </div>
                     <div id="reportResult" class="local-result empty collapsed">Rapor sonucu burada görünecek.</div>
+                </article>
+
+                <article class="action-card">
+                    <h3>Kart Yönetimi</h3>
+                    <p>Sistemde kayıtlı kartları, kart tiplerini ve bakiye durumlarını izleyin.</p>
+                    <div class="button-row">
+                        <button onclick="getAdminCards()">Kartları Görüntüle</button>
+                    </div>
+                    <div id="adminCardsResult" class="local-result empty collapsed">Kart yönetimi sonucu burada görünecek.</div>
+                </article>
+
+                <article class="action-card">
+                    <h3>Kart Başvuruları</h3>
+                    <p>Bekleyen kart başvurularını ve başvuru durumlarını görüntüleyin.</p>
+                    <div class="button-row">
+                        <button onclick="getAdminApplications()">Başvuruları Görüntüle</button>
+                    </div>
+                    <div id="adminApplicationsResult" class="local-result empty collapsed">Kart başvuruları burada görünecek.</div>
+                </article>
+
+                <article class="action-card">
+                    <h3>Kayıp Kart Bildirimleri</h3>
+                    <p>Kayıp kart bildirimlerini, kart durumunu ve kullanıcı bilgisini takip edin.</p>
+                    <div class="button-row">
+                        <button onclick="getAdminLostCards()">Bildirimleri Görüntüle</button>
+                    </div>
+                    <div id="adminLostCardsResult" class="local-result empty collapsed">Kayıp kart bildirimleri burada görünecek.</div>
+                </article>
+
+                <article class="action-card">
+                    <h3>Abonman Yönetimi</h3>
+                    <p>Abonman planlarını, ücretleri ve geçerlilik sürelerini görüntüleyin.</p>
+                    <div class="button-row">
+                        <button onclick="getAdminSubscriptions()">Planları Görüntüle</button>
+                    </div>
+                    <div id="adminSubscriptionsResult" class="local-result empty collapsed">Abonman planları burada görünecek.</div>
+                </article>
+
+                <article class="action-card">
+                    <h3>Ödeme ve Yolculuk İzleme</h3>
+                    <p>Ödeme ve yolculuk hareketlerinin raporlama tarafındaki durumunu izleyin.</p>
+                    <div class="button-row">
+                        <button onclick="getAdminPaymentTripInfo()">Modül Bilgisini Göster</button>
+                    </div>
+                    <div id="adminPaymentTripResult" class="local-result empty collapsed">Ödeme ve yolculuk bilgisi burada görünecek.</div>
                 </article>
             </div>
         </section>
@@ -205,6 +362,42 @@
             <span class="section-label">Kullanıcı Dashboard</span>
             <h2>Kart ve Ulaşım İşlemleri</h2>
             <p>Kendi kartlarınızı, abonmanları ve ulaşım işlemlerinizi bu alandan yönetebilirsiniz.</p>
+        </section>
+
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <span class="section-label">Kullanıcı Özeti</span>
+                    <h2>Kart ve ulaşım modülleri</h2>
+                </div>
+            </div>
+            <div class="summary-grid user-summary">
+                <article class="summary-card compact">
+                    <span class="summary-icon">KM</span>
+                    <h3>Kartlarım</h3>
+                    <p>Kart listesi, kart tipi ve bakiye bilgileri görüntülenir.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">BI</span>
+                    <h3>Bakiye İşlemleri</h3>
+                    <p>Kart seçimiyle bakiye yükleme akışı başlatılır.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">YL</span>
+                    <h3>Yolculuk</h3>
+                    <p>Hat ve durak bilgisiyle yolculuk kaydı oluşturulur.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">AB</span>
+                    <h3>Abonman</h3>
+                    <p>Aktif abonman planları kullanıcıya sunulur.</p>
+                </article>
+                <article class="summary-card compact">
+                    <span class="summary-icon">KK</span>
+                    <h3>Kayıp Kart</h3>
+                    <p>Kayıp kart bildirimi kart seçimiyle gönderilir.</p>
+                </article>
+            </div>
         </section>
 
         <section class="panel">

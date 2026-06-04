@@ -215,6 +215,11 @@ function resetActionResults() {
         "busLineResult",
         "stationResult",
         "reportResult",
+        "adminCardsResult",
+        "adminApplicationsResult",
+        "adminLostCardsResult",
+        "adminSubscriptionsResult",
+        "adminPaymentTripResult",
         "cardResult",
         "balanceTripResult",
         "subscriptionLostResult"
@@ -414,6 +419,22 @@ function formatDate(value) {
     return date.toLocaleDateString("tr-TR");
 }
 
+function formatDisplayValue(value, key = "") {
+    if (value === null || value === undefined || value === "") {
+        return "-";
+    }
+
+    if (typeof value === "boolean") {
+        return value ? "Aktif" : "Pasif";
+    }
+
+    if (key.toLowerCase().includes("date") || key.toLowerCase().includes("at")) {
+        return formatDate(value);
+    }
+
+    return value;
+}
+
 function renderSimpleCards(targetId, title, items, fields) {
     const result = document.getElementById(targetId);
 
@@ -428,12 +449,12 @@ function renderSimpleCards(targetId, title, items, fields) {
 
     const cards = items.map(function (item) {
         const rows = fields.map(function (field) {
-            return `<p><strong>${field.label}:</strong> ${escapeHtml(item[field.key] ?? "-")}</p>`;
+            return `<p><strong>${field.label}:</strong> ${escapeHtml(formatDisplayValue(item[field.key], field.key))}</p>`;
         }).join("");
 
         return `
             <article class="data-card">
-                <h3>${escapeHtml(item[fields[0].key] ?? title)}</h3>
+                <h3>${escapeHtml(formatDisplayValue(item[fields[0].key], fields[0].key) || title)}</h3>
                 ${rows}
             </article>
         `;
@@ -963,6 +984,94 @@ function renderUnknownReport(title, rows) {
             <pre class="code-result">${escapeHtml(JSON.stringify(rows, null, 2))}</pre>
         </section>
     `;
+}
+
+async function getAdminCards() {
+    return toggleActionResult("getAdminCards", "adminCardsResult", loadAdminCards, "all");
+}
+
+async function loadAdminCards() {
+    try {
+        setLocalMessage("adminCardsResult", "Kartlar yükleniyor...");
+        const data = await apiRequest("/Cards/admin/all");
+        renderSimpleCards("adminCardsResult", "Kart", data, [
+            { key: "cardNumber", label: "Kart numarası" },
+            { key: "fullName", label: "Kullanıcı" },
+            { key: "cardTypeName", label: "Kart tipi" },
+            { key: "balance", label: "Bakiye" },
+            { key: "status", label: "Durum" }
+        ]);
+    } catch (error) {
+        setLocalMessage("adminCardsResult", getFriendlyErrorMessage(error, "Kartlar yüklenemedi."));
+    }
+}
+
+async function getAdminApplications() {
+    return toggleActionResult("getAdminApplications", "adminApplicationsResult", loadAdminApplications, "pending");
+}
+
+async function loadAdminApplications() {
+    try {
+        setLocalMessage("adminApplicationsResult", "Kart başvuruları yükleniyor...");
+        const data = await apiRequest("/CardApplications/pending");
+        renderSimpleCards("adminApplicationsResult", "Başvuru", data, [
+            { key: "fullName", label: "Başvuru sahibi" },
+            { key: "cardTypeName", label: "Kart tipi" },
+            { key: "status", label: "Durum" },
+            { key: "applicationDate", label: "Başvuru tarihi" },
+            { key: "adminNote", label: "Admin notu" }
+        ]);
+    } catch (error) {
+        setLocalMessage("adminApplicationsResult", getFriendlyErrorMessage(error, "Kart başvuruları yüklenemedi."));
+    }
+}
+
+async function getAdminLostCards() {
+    return toggleActionResult("getAdminLostCards", "adminLostCardsResult", loadAdminLostCards, "all");
+}
+
+async function loadAdminLostCards() {
+    try {
+        setLocalMessage("adminLostCardsResult", "Kayıp kart bildirimleri yükleniyor...");
+        const data = await apiRequest("/LostCardReports/admin/all");
+        renderSimpleCards("adminLostCardsResult", "Kayıp Kart", data, [
+            { key: "cardNumber", label: "Kart numarası" },
+            { key: "fullName", label: "Kullanıcı" },
+            { key: "reason", label: "Açıklama" },
+            { key: "status", label: "Bildirim durumu" },
+            { key: "cardStatus", label: "Kart durumu" },
+            { key: "reportDate", label: "Bildirim tarihi" }
+        ]);
+    } catch (error) {
+        setLocalMessage("adminLostCardsResult", getFriendlyErrorMessage(error, "Kayıp kart bildirimleri yüklenemedi."));
+    }
+}
+
+async function getAdminSubscriptions() {
+    return toggleActionResult("getAdminSubscriptions", "adminSubscriptionsResult", loadAdminSubscriptions, "plans");
+}
+
+async function loadAdminSubscriptions() {
+    try {
+        setLocalMessage("adminSubscriptionsResult", "Abonman planları yükleniyor...");
+        const data = await apiRequest("/Subscriptions/plans");
+        renderSimpleCards("adminSubscriptionsResult", "Abonman", data, [
+            { key: "name", label: "Plan adı" },
+            { key: "cardTypeName", label: "Kart tipi" },
+            { key: "price", label: "Ücret" },
+            { key: "rideCount", label: "Biniş hakkı" },
+            { key: "validityDays", label: "Geçerlilik günü" },
+            { key: "isActive", label: "Durum" }
+        ]);
+    } catch (error) {
+        setLocalMessage("adminSubscriptionsResult", getFriendlyErrorMessage(error, "Abonman planları yüklenemedi."));
+    }
+}
+
+async function getAdminPaymentTripInfo() {
+    return toggleActionResult("getAdminPaymentTripInfo", "adminPaymentTripResult", function () {
+        setLocalMessage("adminPaymentTripResult", "Ödeme ve yolculuk kayıtları rapor modülü üzerinden takip edilir.");
+    }, "info");
 }
 
 async function getBusLines() {

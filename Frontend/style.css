@@ -6,6 +6,7 @@
     --page-bg: #eef3f7;
     --panel-bg: #ffffff;
     --panel-soft: #f8fafc;
+    --panel-tint: #edf7f3;
     --text: #1f2933;
     --muted: #64748b;
     --border: #d9e2ec;
@@ -24,6 +25,7 @@ body.dark-theme {
     --page-bg: #0f172a;
     --panel-bg: #172033;
     --panel-soft: #111827;
+    --panel-tint: #10251f;
     --text: #e5edf7;
     --muted: #a7b4c4;
     --border: #2b3950;
@@ -41,7 +43,9 @@ body.dark-theme {
 body {
     margin: 0;
     font-family: Arial, sans-serif;
-    background: var(--page-bg);
+    background:
+        radial-gradient(circle at top left, rgba(31, 157, 118, 0.14), transparent 34%),
+        var(--page-bg);
     color: var(--text);
 }
 
@@ -99,7 +103,7 @@ body {
 
 .panel {
     background: var(--panel-bg);
-    padding: 22px;
+    padding: 20px;
     border: 1px solid var(--border);
     border-radius: 8px;
     box-shadow: var(--shadow);
@@ -125,9 +129,55 @@ body {
     gap: 20px;
 }
 
+.guest-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+    gap: 20px;
+    align-items: stretch;
+}
+
+.guest-intro {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 420px;
+}
+
+.guest-intro h2 {
+    max-width: 660px;
+    font-size: 28px;
+    line-height: 1.18;
+}
+
+.auth-stack {
+    display: grid;
+    gap: 16px;
+}
+
+.hero-highlights {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.hero-highlights span,
+.module-grid span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 7px 11px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--panel-soft);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: bold;
+}
+
 .welcome-panel,
 .dashboard-title {
-    background: linear-gradient(135deg, var(--panel-bg), var(--panel-soft));
+    background: linear-gradient(135deg, var(--panel-bg), var(--panel-tint));
 }
 
 .welcome-panel h2,
@@ -145,6 +195,18 @@ body {
 
 .panel-header {
     margin-bottom: 18px;
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.section-heading h2 {
+    margin-top: 3px;
 }
 
 .panel-header.split {
@@ -253,28 +315,83 @@ button:hover {
 
 .action-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
 }
 
+.feature-grid,
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.user-summary {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.module-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
 .action-card {
+    display: flex;
+    flex-direction: column;
     padding: 18px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--panel-soft);
 }
 
-.action-card h3 {
+.summary-card {
+    min-height: 150px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-soft);
+}
+
+.summary-card.compact {
+    min-height: 132px;
+}
+
+.summary-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    background: var(--brand);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.action-card h3,
+.summary-card h3 {
     margin: 0 0 8px;
     color: var(--text);
     font-size: 18px;
 }
 
-.action-card p {
+.action-card p,
+.summary-card p {
     margin: 0 0 14px;
     color: var(--muted);
     font-size: 14px;
     line-height: 1.5;
+}
+
+.summary-card p {
+    margin-bottom: 0;
 }
 
 .inline-form {
@@ -702,6 +819,13 @@ footer {
         width: 100%;
         justify-content: space-between;
     }
+
+    .guest-layout,
+    .feature-grid,
+    .summary-grid,
+    .user-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 800px) {
@@ -712,11 +836,19 @@ footer {
 
     .dashboard,
     .auth-grid,
+    .guest-layout,
     .two-column,
     .action-grid,
+    .feature-grid,
+    .summary-grid,
+    .user-summary,
     .api-grid,
     .manual-row {
         grid-template-columns: 1fr;
+    }
+
+    .guest-intro {
+        min-height: 0;
     }
 
     .wide {
