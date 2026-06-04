@@ -285,6 +285,39 @@ button:hover {
     border-top: 1px solid var(--border);
 }
 
+.user-form {
+    display: grid;
+    gap: 12px;
+}
+
+.user-form h4 {
+    margin: 0;
+    color: var(--text);
+    font-size: 16px;
+}
+
+.form-message {
+    min-height: 20px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.form-message.success {
+    color: var(--brand-dark);
+    font-weight: bold;
+}
+
+.form-message.warning {
+    color: #92400e;
+}
+
+.form-message.error {
+    color: #b91c1c;
+    font-weight: bold;
+}
+
 .developer-panel {
     opacity: 0.94;
 }
@@ -461,6 +494,10 @@ button:hover {
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--panel-bg);
+}
+
+.local-result.collapsed {
+    display: none;
 }
 
 .local-result.empty {

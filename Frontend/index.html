@@ -130,7 +130,7 @@
                         <input id="newLineDescription" type="text" placeholder="Açıklama">
                         <button onclick="createBusLine()">Kaydet</button>
                     </div>
-                    <div id="busLineResult" class="local-result empty">Hat işlemi sonucu burada görünecek.</div>
+                    <div id="busLineResult" class="local-result empty collapsed">Hat işlemi sonucu burada görünecek.</div>
                 </article>
 
                 <article class="action-card">
@@ -145,7 +145,7 @@
                         <input id="newStationDistrict" type="text" placeholder="Konum / açıklama">
                         <button onclick="createStation()">Kaydet</button>
                     </div>
-                    <div id="stationResult" class="local-result empty">Durak işlemi sonucu burada görünecek.</div>
+                    <div id="stationResult" class="local-result empty collapsed">Durak işlemi sonucu burada görünecek.</div>
                 </article>
 
                 <article class="action-card">
@@ -154,7 +154,7 @@
                     <div class="button-row">
                         <button onclick="getAdminReports()">Raporları Görüntüle</button>
                     </div>
-                    <div id="reportResult" class="local-result empty">Rapor sonucu burada görünecek.</div>
+                    <div id="reportResult" class="local-result empty collapsed">Rapor sonucu burada görünecek.</div>
                 </article>
             </div>
         </section>
@@ -213,24 +213,24 @@
                     <h3>Kartlarım</h3>
                     <p>Kayıtlı kartlarınızı ve bakiye durumunuzu görüntüleyin.</p>
                     <button onclick="getMyCards()">Kartlarımı Görüntüle</button>
-                    <button onclick="showDtoInfo('cardResult')">Kart Başvurusu Yap</button>
-                    <div id="cardResult" class="local-result empty">Kart işlemi sonucu burada görünecek.</div>
+                    <button onclick="openCardApplicationForm()">Kart Başvurusu Yap</button>
+                    <div id="cardResult" class="local-result empty collapsed">Kart işlemi sonucu burada görünecek.</div>
                 </article>
 
                 <article class="action-card">
                     <h3>Bakiye ve Yolculuk</h3>
                     <p>Kart numarası, tutar, hat ve durak bilgileriyle işlem yapılabilir.</p>
-                    <button onclick="showDtoInfo('balanceTripResult')">Bakiye Yükle</button>
-                    <button onclick="showDtoInfo('balanceTripResult')">Yolculuk Yap</button>
-                    <div id="balanceTripResult" class="local-result empty">Bakiye ve yolculuk sonucu burada görünecek.</div>
+                    <button onclick="openBalanceForm()">Bakiye Yükle</button>
+                    <button onclick="openTripForm()">Yolculuk Yap</button>
+                    <div id="balanceTripResult" class="local-result empty collapsed">Bakiye ve yolculuk sonucu burada görünecek.</div>
                 </article>
 
                 <article class="action-card">
                     <h3>Abonman ve Kayıp Kart</h3>
                     <p>Abonman planlarını inceleyin veya kayıp kart bildirimi sürecini başlatın.</p>
                     <button onclick="getSubscriptionPlans()">Abonman Planlarını Gör</button>
-                    <button onclick="showDtoInfo('subscriptionLostResult')">Kayıp Kart Bildir</button>
-                    <div id="subscriptionLostResult" class="local-result empty">Abonman ve kayıp kart sonucu burada görünecek.</div>
+                    <button onclick="openLostCardForm()">Kayıp Kart Bildir</button>
+                    <div id="subscriptionLostResult" class="local-result empty collapsed">Abonman ve kayıp kart sonucu burada görünecek.</div>
                 </article>
             </div>
         </section>

@@ -1,5 +1,11 @@
 const API_BASE_URL = "https://localhost:7273/api";
-const DTO_INFO_MESSAGE = "Bu işlem için gerekli bilgiler backend DTO yapısına göre doldurulmalıdır.";
+const actionResultState = {};
+const formSubmitState = {};
+const CARD_TYPES = [
+    { id: 1, name: "Tam Kart" },
+    { id: 2, name: "Öğrenci Kart" },
+    { id: 3, name: "İndirimli Kart" }
+];
 
 function getToken() {
     return localStorage.getItem("token");
@@ -100,6 +106,7 @@ async function login() {
 
         if (token) {
             localStorage.setItem("token", token);
+            resetActionResults();
             updateUserStatus();
             renderByAuthState();
             showResult("loginResult", "Giriş başarılı. Token kaydedildi.");
@@ -137,9 +144,81 @@ function logout() {
     localStorage.removeItem("token");
     closeProfileMenu();
     closeSettingsModal();
+    resetActionResults();
     updateUserStatus();
     renderByAuthState();
     showResult("loginResult", "Çıkış yapıldı. Token silindi.");
+}
+
+function isResultVisible(elementId) {
+    const result = document.getElementById(elementId);
+
+    return Boolean(result && !result.classList.contains("collapsed"));
+}
+
+function hideResult(elementId) {
+    const result = document.getElementById(elementId);
+
+    if (result) {
+        result.classList.add("collapsed");
+    }
+}
+
+function showResultElement(elementId) {
+    const result = document.getElementById(elementId);
+
+    if (result) {
+        result.classList.remove("collapsed");
+    }
+}
+
+function showLocalResult(elementId, content) {
+    if (typeof content === "string") {
+        setLocalMessage(elementId, content);
+        return;
+    }
+
+    setLocalHtml(elementId, content.html || "");
+}
+
+async function toggleActionResult(actionKey, elementId, callback, signature = "default") {
+    const state = actionResultState[elementId];
+
+    if (state && state.actionKey === actionKey && state.signature === signature) {
+        if (isResultVisible(elementId)) {
+            hideResult(elementId);
+            return;
+        }
+
+        showResultElement(elementId);
+        return;
+    }
+
+    actionResultState[elementId] = {
+        actionKey: actionKey,
+        signature: signature
+    };
+    showResultElement(elementId);
+    await callback();
+}
+
+function resetActionResults() {
+    Object.keys(actionResultState).forEach(function (key) {
+        delete actionResultState[key];
+    });
+
+    Object.keys(formSubmitState).forEach(function (key) {
+        delete formSubmitState[key];
+    });
+
+    [
+        "busLineResult",
+        "stationResult",
+        "reportResult",
+        "cardResult",
+        "balanceTripResult",
+        "subscriptionLostResult"
+    ].forEach(hideResult);
 }
 
 function setLocalMessage(elementId, message) {
@@ -150,6 +229,7 @@ function setLocalMessage(elementId, message) {
     }
 
     result.className = "local-result empty";
+    showResultElement(elementId);
     result.textContent = message;
 }
 
@@ -161,6 +241,7 @@ function setLocalHtml(elementId, html) {
     }
 
     result.className = "local-result";
+    showResultElement(elementId);
     result.innerHTML = html;
 }
 
@@ -170,20 +251,6 @@ function toggleForm(formId) {
     if (form) {
         form.classList.toggle("hidden");
     }
-}
-
-function showDtoInfo(targetId = null) {
-    setLocalMessage(targetId || getDefaultDtoResultId(), DTO_INFO_MESSAGE);
-}
-
-function getDefaultDtoResultId() {
-    const userSection = document.getElementById("userSection");
-
-    if (userSection && !userSection.classList.contains("hidden")) {
-        return "cardResult";
-    }
-
-    return "busLineResult";
 }
 
 function showReportInfo() {
@@ -207,6 +274,7 @@ function renderAdminTable(type, items, targetId) {
     }
 
     result.className = "local-result";
+    showResultElement(targetId);
 
     if (type === "busLines") {
         const rows = items.map(function (line) {
@@ -372,10 +440,349 @@ function renderSimpleCards(targetId, title, items, fields) {
     }).join("");
 
     result.className = "local-result";
+    showResultElement(targetId);
     result.innerHTML = `<div class="mobile-list always-visible">${cards}</div>`;
 }
 
+function getFriendlyErrorMessage(error, fallback = "İşlem sırasında bir hata oluştu.") {
+    if (!error || !error.message) {
+        return fallback;
+    }
+
+    try {
+        const parsed = JSON.parse(error.message);
+
+        if (parsed && parsed.message) {
+            return parsed.message;
+        }
+    } catch {
+        return error.message;
+    }
+
+    return error.message || fallback;
+}
+
+function setFormMessage(elementId, message, type = "info") {
+    const messageElement = document.getElementById(elementId);
+
+    if (!messageElement) {
+        return;
+    }
+
+    messageElement.className = `form-message ${type}`;
+    messageElement.textContent = message;
+}
+
+function getSelectValue(elementId) {
+    const element = document.getElementById(elementId);
+
+    return element ? Number(element.value) : 0;
+}
+
+function getInputValue(elementId) {
+    const element = document.getElementById(elementId);
+
+    return element ? element.value.trim() : "";
+}
+
+function renderSelectOptions(items, valueKeys, labelBuilder) {
+    return items.map(function (item) {
+        const value = valueKeys.reduce(function (result, key) {
+            return result || item[key];
+        }, "");
+
+        return `<option value="${escapeHtml(value)}">${escapeHtml(labelBuilder(item))}</option>`;
+    }).join("");
+}
+
+async function getMyCardsForForm() {
+    const cards = await apiRequest("/Cards/my");
+
+    return Array.isArray(cards) ? cards : [];
+}
+
+function renderCardSelect(id, cards) {
+    if (!Array.isArray(cards) || cards.length === 0) {
+        return `<p class="form-message warning">Bu işlem için önce kartınızın olması gerekir.</p>`;
+    }
+
+    return `
+        <label for="${id}">Kart seçimi</label>
+        <select id="${id}">
+            <option value="">Lütfen kart seçiniz.</option>
+            ${renderSelectOptions(cards, ["cardId", "id"], function (card) {
+                const number = card.cardNumber || "Kart";
+                const balance = card.balance ?? "-";
+                return `${number} - Bakiye: ${balance}`;
+            })}
+        </select>
+    `;
+}
+
+function buildUserForm(title, innerHtml, submitLabel, submitHandlerName, messageId) {
+    return `
+        <div class="user-form">
+            <h4>${escapeHtml(title)}</h4>
+            <div class="form-grid">
+                ${innerHtml}
+            </div>
+            <div class="button-row">
+                <button type="button" onclick="${submitHandlerName}()">${escapeHtml(submitLabel)}</button>
+            </div>
+            <p id="${messageId}" class="form-message"></p>
+        </div>
+    `;
+}
+
+function shouldSkipDuplicateSubmit(actionKey, signature, messageId) {
+    if (formSubmitState[actionKey] === signature) {
+        setFormMessage(messageId, "Bu işlem aynı bilgilerle daha önce gönderildi. Yeni işlem için bilgileri değiştiriniz.", "warning");
+        return true;
+    }
+
+    formSubmitState[actionKey] = signature;
+    return false;
+}
+
+function clearSubmitSignature(actionKey) {
+    delete formSubmitState[actionKey];
+}
+
+async function openCardApplicationForm() {
+    return toggleActionResult("openCardApplicationForm", "cardResult", function () {
+        const cardTypeOptions = CARD_TYPES.map(function (cardType) {
+            return `<option value="${cardType.id}">${escapeHtml(cardType.name)}</option>`;
+        }).join("");
+
+        setLocalHtml("cardResult", buildUserForm(
+            "Kart Başvurusu",
+            `
+                <label for="applicationCardTypeId">Kart tipi</label>
+                <select id="applicationCardTypeId">
+                    <option value="">Lütfen kart tipi seçiniz.</option>
+                    ${cardTypeOptions}
+                </select>
+            `,
+            "Başvuruyu Gönder",
+            "submitCardApplication",
+            "cardApplicationMessage"
+        ));
+    }, "form");
+}
+
+async function submitCardApplication() {
+    const cardTypeId = getSelectValue("applicationCardTypeId");
+    const signature = JSON.stringify({ cardTypeId: cardTypeId });
+
+    if (!cardTypeId) {
+        setFormMessage("cardApplicationMessage", "Lütfen kart tipi seçiniz.", "warning");
+        return;
+    }
+
+    if (shouldSkipDuplicateSubmit("submitCardApplication", signature, "cardApplicationMessage")) {
+        return;
+    }
+
+    try {
+        setFormMessage("cardApplicationMessage", "Başvurunuz gönderiliyor...");
+        await apiRequest("/CardApplications", "POST", { cardTypeId: cardTypeId });
+        setFormMessage("cardApplicationMessage", "Başvuru başarıyla gönderildi.", "success");
+    } catch (error) {
+        clearSubmitSignature("submitCardApplication");
+        setFormMessage("cardApplicationMessage", getFriendlyErrorMessage(error, "Başvuru gönderilemedi."), "error");
+    }
+}
+
+async function openBalanceForm() {
+    return toggleActionResult("openBalanceForm", "balanceTripResult", async function () {
+        try {
+            setLocalMessage("balanceTripResult", "Kartlar yükleniyor...");
+            const cards = await getMyCardsForForm();
+            const hasCards = cards.length > 0;
+
+            setLocalHtml("balanceTripResult", buildUserForm(
+                "Bakiye Yükle",
+                `
+                    ${renderCardSelect("balanceCardId", cards)}
+                    <label for="balanceAmount">Tutar</label>
+                    <input id="balanceAmount" type="number" min="1" step="0.01" placeholder="Tutar giriniz." ${hasCards ? "" : "disabled"}>
+                    <label for="balancePaymentMethod">Ödeme yöntemi</label>
+                    <select id="balancePaymentMethod" ${hasCards ? "" : "disabled"}>
+                        <option value="Kredi Kartı">Kredi Kartı</option>
+                        <option value="Banka Kartı">Banka Kartı</option>
+                        <option value="Nakit">Nakit</option>
+                    </select>
+                `,
+                "Bakiye Yükle",
+                "submitBalanceLoad",
+                "balanceLoadMessage"
+            ));
+        } catch (error) {
+            setLocalMessage("balanceTripResult", getFriendlyErrorMessage(error, "Kartlarınız yüklenemedi."));
+        }
+    }, "form");
+}
+
+async function submitBalanceLoad() {
+    const cardId = getSelectValue("balanceCardId");
+    const amount = Number(getInputValue("balanceAmount"));
+    const paymentMethod = getInputValue("balancePaymentMethod") || "Kredi Kartı";
+    const signature = JSON.stringify({ cardId: cardId, amount: amount, paymentMethod: paymentMethod });
+
+    if (!cardId) {
+        setFormMessage("balanceLoadMessage", "Lütfen kart seçiniz.", "warning");
+        return;
+    }
+
+    if (!amount || amount <= 0) {
+        setFormMessage("balanceLoadMessage", "Tutar giriniz.", "warning");
+        return;
+    }
+
+    if (shouldSkipDuplicateSubmit("submitBalanceLoad", signature, "balanceLoadMessage")) {
+        return;
+    }
+
+    try {
+        setFormMessage("balanceLoadMessage", "Bakiye yükleniyor...");
+        await apiRequest("/Payments/load-balance", "POST", {
+            cardId: cardId,
+            amount: amount,
+            paymentMethod: paymentMethod
+        });
+        setFormMessage("balanceLoadMessage", "Bakiye başarıyla yüklendi.", "success");
+    } catch (error) {
+        clearSubmitSignature("submitBalanceLoad");
+        setFormMessage("balanceLoadMessage", getFriendlyErrorMessage(error, "Bakiye yüklenemedi."), "error");
+    }
+}
+
+async function openTripForm() {
+    return toggleActionResult("openTripForm", "balanceTripResult", async function () {
+        try {
+            setLocalMessage("balanceTripResult", "Kartlar yükleniyor...");
+            const cards = await getMyCardsForForm();
+            const hasCards = cards.length > 0;
+
+            setLocalHtml("balanceTripResult", buildUserForm(
+                "Yolculuk Yap",
+                `
+                    ${renderCardSelect("tripCardId", cards)}
+                    <label for="tripBusLineId">Hat numarası</label>
+                    <input id="tripBusLineId" type="number" min="1" placeholder="Hat numarası giriniz." ${hasCards ? "" : "disabled"}>
+                    <label for="tripStationId">Durak numarası</label>
+                    <input id="tripStationId" type="number" min="1" placeholder="Durak numarası giriniz." ${hasCards ? "" : "disabled"}>
+                `,
+                "Yolculuğu Başlat",
+                "submitTrip",
+                "tripMessage"
+            ));
+        } catch (error) {
+            setLocalMessage("balanceTripResult", getFriendlyErrorMessage(error, "Kartlarınız yüklenemedi."));
+        }
+    }, "form");
+}
+
+async function submitTrip() {
+    const cardId = getSelectValue("tripCardId");
+    const busLineId = Number(getInputValue("tripBusLineId"));
+    const stationId = Number(getInputValue("tripStationId"));
+    const signature = JSON.stringify({ cardId: cardId, busLineId: busLineId, stationId: stationId });
+
+    if (!cardId) {
+        setFormMessage("tripMessage", "Lütfen kart seçiniz.", "warning");
+        return;
+    }
+
+    if (!busLineId) {
+        setFormMessage("tripMessage", "Lütfen hat bilgisini giriniz.", "warning");
+        return;
+    }
+
+    if (!stationId) {
+        setFormMessage("tripMessage", "Lütfen durak bilgisini giriniz.", "warning");
+        return;
+    }
+
+    if (shouldSkipDuplicateSubmit("submitTrip", signature, "tripMessage")) {
+        return;
+    }
+
+    try {
+        setFormMessage("tripMessage", "Yolculuk kaydediliyor...");
+        await apiRequest("/Trips", "POST", {
+            cardId: cardId,
+            busLineId: busLineId,
+            stationId: stationId
+        });
+        setFormMessage("tripMessage", "Yolculuk başarıyla kaydedildi.", "success");
+    } catch (error) {
+        clearSubmitSignature("submitTrip");
+        setFormMessage("tripMessage", getFriendlyErrorMessage(error, "Yolculuk kaydedilemedi."), "error");
+    }
+}
+
+async function openLostCardForm() {
+    return toggleActionResult("openLostCardForm", "subscriptionLostResult", async function () {
+        try {
+            setLocalMessage("subscriptionLostResult", "Kartlar yükleniyor...");
+            const cards = await getMyCardsForForm();
+            const hasCards = cards.length > 0;
+
+            setLocalHtml("subscriptionLostResult", buildUserForm(
+                "Kayıp Kart Bildir",
+                `
+                    ${renderCardSelect("lostCardId", cards)}
+                    <label for="lostCardReason">Açıklama</label>
+                    <textarea id="lostCardReason" placeholder="Kayıp nedeni veya açıklama giriniz." ${hasCards ? "" : "disabled"}></textarea>
+                `,
+                "Bildirimi Gönder",
+                "submitLostCardReport",
+                "lostCardMessage"
+            ));
+        } catch (error) {
+            setLocalMessage("subscriptionLostResult", getFriendlyErrorMessage(error, "Kartlarınız yüklenemedi."));
+        }
+    }, "form");
+}
+
+async function submitLostCardReport() {
+    const cardId = getSelectValue("lostCardId");
+    const reason = getInputValue("lostCardReason");
+    const signature = JSON.stringify({ cardId: cardId, reason: reason });
+
+    if (!cardId) {
+        setFormMessage("lostCardMessage", "Lütfen kart seçiniz.", "warning");
+        return;
+    }
+
+    if (!reason) {
+        setFormMessage("lostCardMessage", "Lütfen açıklama giriniz.", "warning");
+        return;
+    }
+
+    if (shouldSkipDuplicateSubmit("submitLostCardReport", signature, "lostCardMessage")) {
+        return;
+    }
+
+    try {
+        setFormMessage("lostCardMessage", "Bildirim gönderiliyor...");
+        await apiRequest("/LostCardReports", "POST", {
+            cardId: cardId,
+            reason: reason
+        });
+        setFormMessage("lostCardMessage", "Kayıp kart bildirimi başarıyla gönderildi.", "success");
+    } catch (error) {
+        clearSubmitSignature("submitLostCardReport");
+        setFormMessage("lostCardMessage", getFriendlyErrorMessage(error, "Bildirim gönderilemedi."), "error");
+    }
+}
+
 async function getAdminReports() {
+    return toggleActionResult("getAdminReports", "reportResult", loadAdminReports, "reports");
+}
+
+async function loadAdminReports() {
     try {
         setLocalMessage("reportResult", "Raporlar yükleniyor...");
 
@@ -559,6 +966,10 @@ function renderUnknownReport(title, rows) {
 }
 
 async function getBusLines() {
+    return toggleActionResult("getBusLines", "busLineResult", loadBusLines, "all");
+}
+
+async function loadBusLines() {
     try {
         setLocalMessage("busLineResult", "Hatlar yükleniyor...");
         const data = await apiRequest("/Admin/bus-lines");
@@ -573,20 +984,30 @@ async function createBusLine() {
     const lineName = document.getElementById("newLineName").value;
     const description = document.getElementById("newLineDescription").value;
 
-    try {
-        setLocalMessage("busLineResult", "Yeni hat kaydediliyor...");
-        await apiRequest("/Admin/bus-lines", "POST", {
-            lineCode: lineCode,
-            lineName: lineName,
-            description: description || null
-        });
-        await getBusLines();
-    } catch (error) {
-        setLocalMessage("busLineResult", error.message);
-    }
+    return toggleActionResult("createBusLine", "busLineResult", async function () {
+        try {
+            setLocalMessage("busLineResult", "Yeni hat kaydediliyor...");
+            await apiRequest("/Admin/bus-lines", "POST", {
+                lineCode: lineCode,
+                lineName: lineName,
+                description: description || null
+            });
+            await loadBusLines();
+        } catch (error) {
+            setLocalMessage("busLineResult", error.message);
+        }
+    }, JSON.stringify({
+        lineCode: lineCode,
+        lineName: lineName,
+        description: description || null
+    }));
 }
 
 async function getStations() {
+    return toggleActionResult("getStations", "stationResult", loadStations, "all");
+}
+
+async function loadStations() {
     try {
         setLocalMessage("stationResult", "Duraklar yükleniyor...");
         const data = await apiRequest("/Admin/stations");
@@ -600,19 +1021,28 @@ async function createStation() {
     const stationName = document.getElementById("newStationName").value;
     const district = document.getElementById("newStationDistrict").value;
 
-    try {
-        setLocalMessage("stationResult", "Yeni durak kaydediliyor...");
-        await apiRequest("/Admin/stations", "POST", {
-            stationName: stationName,
-            district: district || null
-        });
-        await getStations();
-    } catch (error) {
-        setLocalMessage("stationResult", error.message);
-    }
+    return toggleActionResult("createStation", "stationResult", async function () {
+        try {
+            setLocalMessage("stationResult", "Yeni durak kaydediliyor...");
+            await apiRequest("/Admin/stations", "POST", {
+                stationName: stationName,
+                district: district || null
+            });
+            await loadStations();
+        } catch (error) {
+            setLocalMessage("stationResult", error.message);
+        }
+    }, JSON.stringify({
+        stationName: stationName,
+        district: district || null
+    }));
 }
 
 async function getMyCards() {
+    return toggleActionResult("getMyCards", "cardResult", loadMyCards, "all");
+}
+
+async function loadMyCards() {
     try {
         setLocalMessage("cardResult", "Kartlar yükleniyor...");
         const data = await apiRequest("/Cards/my");
@@ -628,6 +1058,10 @@ async function getMyCards() {
 }
 
 async function getSubscriptionPlans() {
+    return toggleActionResult("getSubscriptionPlans", "subscriptionLostResult", loadSubscriptionPlans, "all");
+}
+
+async function loadSubscriptionPlans() {
     try {
         setLocalMessage("subscriptionLostResult", "Abonman planları yükleniyor...");
         const data = await apiRequest("/Subscriptions/plans");
@@ -804,7 +1238,6 @@ function renderByAuthState() {
     setSectionVisible("guestSection", !isLoggedIn);
     setSectionVisible("adminSection", isLoggedIn && isAdmin);
     setSectionVisible("userSection", isLoggedIn && !isAdmin);
-    setSectionVisible("resultSection", isLoggedIn && !isAdmin);
 
     if (!isLoggedIn) {
         resetDeveloperPanel();
