@@ -21,7 +21,13 @@ Proje üç ana parçadan oluşur:
 
 ---
 
-## 2. Kullanılan Teknolojiler
+## 2. Problem Tanımı
+
+KentKart Web App; şehir içi ulaşım kart başvurusu, kart yönetimi, bakiye yükleme, yolculuk, kayıp kart bildirimi, abonman ve admin raporlama süreçlerini tek bir sistemde yönetmek için geliştirilmiştir. Amaç, hem kullanıcıların kart işlemlerini dijital ortamda kolayca yapabilmesini hem de yöneticilerin hat, durak, ücret, başvuru ve raporlama işlemlerini merkezi bir panelden kontrol edebilmesini sağlamaktır.
+
+---
+
+## 3. Kullanılan Teknolojiler
 
 - **C#**
 - **ASP.NET Core Web API** [1]
@@ -34,7 +40,7 @@ Proje üç ana parçadan oluşur:
 
 ---
 
-## 3. Yapılan Araştırmalar
+## 4. Yapılan Araştırmalar
 
 Proje geliştirilmeden önce ve geliştirme süresince aşağıdaki konularda araştırma yapılmıştır:
 
@@ -48,7 +54,7 @@ Proje geliştirilmeden önce ve geliştirme süresince aşağıdaki konularda ar
 
 ---
 
-## 4. Sistem Rolleri
+## 5. Sistem Rolleri
 
 ### Misafir (Guest)
 Giriş yapmamış ziyaretçidir. Yalnızca **Login / Register** ekranını görür. Diğer işlemlere erişebilmek için kayıt olup giriş yapması gerekir.
@@ -75,7 +81,7 @@ Giriş yaptıktan sonra yönetim paneline ulaşır. Yapabildiği işlemler:
 
 ---
 
-## 5. Proje Klasör Yapısı
+## 6. Proje Klasör Yapısı
 
 ```
 KentKartWebApp/
@@ -93,7 +99,13 @@ KentKartWebApp/
 
 ---
 
-## 6. Veritabanı Tasarımı
+## 7. Genel Yapı
+
+Proje; ASP.NET Core Web API backend, MSSQL veritabanı, Entity Framework Core, frontend dosyaları, DatabaseScripts ve dokümantasyon dosyalarından oluşur. Backend; Controller − Service − DTO − Entity − DbContext yapısıyla düzenlenmiştir. İstekler Controller katmanında karşılanır, iş kuralları Service katmanında çalışır, veriler DTO'lar ile taşınır ve EF Core DbContext üzerinden MSSQL veritabanına erişilir. Frontend ise saf HTML/CSS/JS ile role-based çalışan tek sayfalık bir arayüzdür.
+
+---
+
+## 8. Veritabanı Tasarımı
 
 Aşağıdaki tablolar `KentKartDbContext` ve `Entities` klasöründeki sınıflara göre gerçek olarak projede tanımlıdır:
 
@@ -118,7 +130,7 @@ Aşağıdaki tablolar `KentKartDbContext` ve `Entities` klasöründeki sınıfla
 
 ---
 
-## 7. Veritabanı İlişkileri
+## 9. Veritabanı İlişkileri
 
 - **Role → User:** Bir rolün birden çok kullanıcısı olabilir; her kullanıcının bir rolü vardır.
 - **User → Card:** Bir kullanıcının birden çok kartı olabilir.
@@ -135,13 +147,13 @@ Aşağıdaki tablolar `KentKartDbContext` ve `Entities` klasöründeki sınıfla
 
 ---
 
-## 8. ER Diyagramı (Veri Tabanı Diyagramı)
+## 10. ER Diyagramı (Veri Tabanı Diyagramı)
 
 ![ER Diyagramı](docs/er-diagram.png)
 
 ---
 
-## 9. Sistem Mimarisi (Yazılım Mimarisi)
+## 11. Sistem Mimarisi (Yazılım Mimarisi)
 
 Sistem katmanlı bir yapıda çalışır:
 
@@ -164,7 +176,7 @@ ASP.NET Core Web API
 
 ---
 
-## 10. Uygulama Akış Diyagramı (Akış Şeması)
+## 12. Uygulama Akış Diyagramı (Akış Şeması)
 
 Uygulama **role göre (role-based)** çalışır:
 
@@ -180,7 +192,7 @@ Uygulama **role göre (role-based)** çalışır:
 
 ---
 
-## 11. SQL Scriptleri
+## 13. SQL Scriptleri
 
 `DatabaseScripts/` klasörü, veritabanı tarafında çalışan ek nesneleri ve test verilerini içerir:
 
@@ -207,7 +219,7 @@ Uygulama **role göre (role-based)** çalışır:
 
 ---
 
-## 12. Backend API Özeti
+## 14. Backend API Özeti
 
 | Controller | Görevi |
 |------------|--------|
@@ -223,7 +235,7 @@ Uygulama **role göre (role-based)** çalışır:
 
 ---
 
-## 13. Frontend Özellikleri
+## 15. Frontend Özellikleri
 
 - **Saf HTML / CSS / JavaScript** ile yazılmıştır; herhangi bir frontend framework kullanılmamıştır.
 - **Role-based UI:** Arayüz, giriş yapan kullanıcının rolüne göre değişir.
@@ -237,7 +249,7 @@ Uygulama **role göre (role-based)** çalışır:
 
 ---
 
-## 14. Ekran Görüntüleri
+## 16. Ekran Görüntüleri
 
 **Misafir Ekranı**
 
@@ -257,7 +269,7 @@ Uygulama **role göre (role-based)** çalışır:
 
 ---
 
-## 15. Kurulum ve Çalıştırma
+## 17. Kurulum ve Çalıştırma
 
 1. **Repoyu klonlayın:**
    ```bash
@@ -303,7 +315,7 @@ Uygulama **role göre (role-based)** çalışır:
 
 ---
 
-## 16. Test Senaryoları
+## 18. Test Senaryoları
 
 - Kayıt olma (Register) ve giriş yapma (Login)
 - Admin: hat listeleme ve yeni hat ekleme
@@ -318,7 +330,7 @@ Uygulama **role göre (role-based)** çalışır:
 
 ---
 
-## 17. Proje Notları
+## 19. Proje Notları
 
 - Raporlama için ayrı bir `Reports` tablosu kullanılmamıştır. Raporlar; SQL **view / stored procedure** ve **ReportsController** üzerinden üretilir.
 - **Geliştirici (developer) test alanı** yalnızca admin ekranında yer alır.
@@ -326,13 +338,13 @@ Uygulama **role göre (role-based)** çalışır:
 
 ---
 
-## 18. GitHub
+## 20. GitHub
 
 GitHub Linki: https://github.com/eyupcanpolat/KentKartWebApp
 
 ---
 
-## 19. Referanslar
+## 21. Referanslar
 
 - [1] Microsoft ASP.NET Core dokümantasyonu
 - [2] Microsoft Entity Framework Core dokümantasyonu

@@ -239,7 +239,9 @@ INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedA
 SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Turist Kart'), '41000000009', 0, 'Active', GETDATE()
 FROM dbo.Users WHERE Email = 'deniz@test.com';
 
-IF NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000010')
+/* admin@test.com karti yalnizca o kullanici mevcutsa eklenir (yoksa atlanir, hata vermez) */
+IF EXISTS (SELECT 1 FROM dbo.Users WHERE Email = 'admin@test.com')
+   AND NOT EXISTS (SELECT 1 FROM dbo.Cards WHERE CardNumber = '41000000010')
 INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
 SELECT UserId, (SELECT CardTypeId FROM dbo.CardTypes WHERE Name = 'Kurumsal Kart'), '41000000010', 0, 'Active', GETDATE()
 FROM dbo.Users WHERE Email = 'admin@test.com';
@@ -373,10 +375,174 @@ INSERT INTO dbo.CardSubscriptions (CardId, SubscriptionPlanId, StartDate, EndDat
 SELECT c.CardId, sp.SubscriptionPlanId, GETDATE(), DATEADD(DAY, sp.ValidityDays, GETDATE()), sp.RideCount, 'Active', GETDATE()
 FROM dbo.Cards c
 INNER JOIN dbo.SubscriptionPlans sp ON c.CardTypeId = sp.CardTypeId
-WHERE c.CardNumber IN ('41896505073', '41000000003', '41000000004')
+WHERE c.CardNumber IN ('41000000003', '41000000004')
   AND NOT EXISTS (
-      SELECT 1 
+      SELECT 1
       FROM dbo.CardSubscriptions cs
       WHERE cs.CardId = c.CardId
         AND cs.Status = 'Active'
   );
+
+
+/* =========================================================
+   14) 10+ Dummy Data Garantisi
+   PDF isteri: her tabloda en az 10 anlamli test verisi.
+   Bu bolum Users, Cards, CardApplications, Payments, Trips,
+   LostCardReports, SubscriptionPlans ve CardSubscriptions
+   tablolarini 10+ satira tamamlar.
+   - Tum insertler NOT EXISTS ile korunmustur; script tekrar
+     tekrar calistirilabilir (idempotent).
+   - Ana test karti 41896505073 bu bolumde KULLANILMAZ.
+   - Aktif kartlar '46' prefixli, kayip kartlar '47' prefixlidir.
+   ========================================================= */
+
+
+/* 14.1) Ek dummy kullanicilar (12 adet) */
+;WITH DummyUsers AS (
+    SELECT * FROM (VALUES
+        ('Dummy01', 'Kullanici', 'dummyuser01@kentkart.test', '05559000001'),
+        ('Dummy02', 'Kullanici', 'dummyuser02@kentkart.test', '05559000002'),
+        ('Dummy03', 'Kullanici', 'dummyuser03@kentkart.test', '05559000003'),
+        ('Dummy04', 'Kullanici', 'dummyuser04@kentkart.test', '05559000004'),
+        ('Dummy05', 'Kullanici', 'dummyuser05@kentkart.test', '05559000005'),
+        ('Dummy06', 'Kullanici', 'dummyuser06@kentkart.test', '05559000006'),
+        ('Dummy07', 'Kullanici', 'dummyuser07@kentkart.test', '05559000007'),
+        ('Dummy08', 'Kullanici', 'dummyuser08@kentkart.test', '05559000008'),
+        ('Dummy09', 'Kullanici', 'dummyuser09@kentkart.test', '05559000009'),
+        ('Dummy10', 'Kullanici', 'dummyuser10@kentkart.test', '05559000010'),
+        ('Dummy11', 'Kullanici', 'dummyuser11@kentkart.test', '05559000011'),
+        ('Dummy12', 'Kullanici', 'dummyuser12@kentkart.test', '05559000012')
+    ) v(FirstName, LastName, Email, PhoneNumber)
+)
+INSERT INTO dbo.Users (RoleId, FirstName, LastName, Email, PasswordHash, PhoneNumber, CreatedAt, IsActive)
+SELECT (SELECT RoleId FROM dbo.Roles WHERE Name = 'User'),
+       d.FirstName, d.LastName, d.Email, 'DummyPasswordHash_NotForLogin', d.PhoneNumber, GETDATE(), 1
+FROM DummyUsers d
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Users u WHERE u.Email = d.Email);
+
+
+/* 14.2) Ek dummy aktif kartlar (12 adet, '46' prefixli) */
+;WITH DummyCards AS (
+    SELECT * FROM (VALUES
+        ('dummyuser01@kentkart.test', '4600000000001', 1),
+        ('dummyuser02@kentkart.test', '4600000000002', 2),
+        ('dummyuser03@kentkart.test', '4600000000003', 3),
+        ('dummyuser04@kentkart.test', '4600000000004', 1),
+        ('dummyuser05@kentkart.test', '4600000000005', 2),
+        ('dummyuser06@kentkart.test', '4600000000006', 3),
+        ('dummyuser07@kentkart.test', '4600000000007', 1),
+        ('dummyuser08@kentkart.test', '4600000000008', 2),
+        ('dummyuser09@kentkart.test', '4600000000009', 3),
+        ('dummyuser10@kentkart.test', '4600000000010', 1),
+        ('dummyuser11@kentkart.test', '4600000000011', 2),
+        ('dummyuser12@kentkart.test', '4600000000012', 3)
+    ) v(Email, CardNumber, CardTypeId)
+)
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT u.UserId, d.CardTypeId, d.CardNumber, 0, 'Active', GETDATE()
+FROM DummyCards d
+INNER JOIN dbo.Users u ON u.Email = d.Email
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Cards c WHERE c.CardNumber = d.CardNumber);
+
+
+/* 14.3) Ek dummy kart basvurulari (her '46' kart icin 1 adet) */
+INSERT INTO dbo.CardApplications (UserId, CardTypeId, ApplicationDate, Status, AdminNote, ApprovedAt)
+SELECT c.UserId, c.CardTypeId, GETDATE(), 'Approved', 'Dummy 10+ basvuru', GETDATE()
+FROM dbo.Cards c
+WHERE c.CardNumber LIKE '46%'
+  AND NOT EXISTS (
+      SELECT 1 FROM dbo.CardApplications ca
+      WHERE ca.UserId = c.UserId AND ca.AdminNote = 'Dummy 10+ basvuru'
+  );
+
+
+/* 14.4) Ek dummy bakiye yuklemeleri (Payments / BalanceLoad).
+   Trigger bu insertlerde kart bakiyesini artirir (200 TL). */
+INSERT INTO dbo.Payments (CardId, Amount, PaymentMethod, PaymentType, Status, PaymentDate, Description)
+SELECT c.CardId, 200, 'CreditCard', 'BalanceLoad', 'Success', GETDATE(), 'Dummy 10+ bakiye yukleme'
+FROM dbo.Cards c
+WHERE c.CardNumber LIKE '46%'
+  AND NOT EXISTS (
+      SELECT 1 FROM dbo.Payments p
+      WHERE p.CardId = c.CardId AND p.Description = 'Dummy 10+ bakiye yukleme'
+  );
+
+
+/* 14.5) Ek dummy yolculuklar (Trips / Completed).
+   14.4 sonrasi bakiye 200 TL oldugu icin 10 TL ucret guvenle dusulur. */
+INSERT INTO dbo.Trips (CardId, BusLineId, StationId, FareAmount, TripDate, Status)
+SELECT c.CardId,
+       (SELECT MIN(BusLineId) FROM dbo.BusLines),
+       (SELECT MIN(StationId) FROM dbo.Stations),
+       10, GETDATE(), 'Completed'
+FROM dbo.Cards c
+WHERE c.CardNumber LIKE '46%'
+  AND NOT EXISTS (SELECT 1 FROM dbo.Trips t WHERE t.CardId = c.CardId);
+
+
+/* 14.6) Ek dummy abonman planlari (9 adet; seed ile birlikte toplam 12). */
+;WITH DummyPlans AS (
+    SELECT * FROM (VALUES
+        ('Dummy Abonman 01', 'Dummy aylik plan',    1,  300, 60,  30),
+        ('Dummy Abonman 02', 'Dummy aylik plan',    2,  200, 80,  30),
+        ('Dummy Abonman 03', 'Dummy aylik plan',    3,  250, 70,  30),
+        ('Dummy Abonman 04', 'Dummy haftalik plan', 1,  120, 20,   7),
+        ('Dummy Abonman 05', 'Dummy haftalik plan', 2,   90, 30,   7),
+        ('Dummy Abonman 06', 'Dummy haftalik plan', 3,  100, 25,   7),
+        ('Dummy Abonman 07', 'Dummy yillik plan',   1, 2800, 700, 365),
+        ('Dummy Abonman 08', 'Dummy yillik plan',   2, 2000, 900, 365),
+        ('Dummy Abonman 09', 'Dummy yillik plan',   3, 2400, 800, 365)
+    ) v(Name, Descr, CardTypeId, Price, RideCount, ValidityDays)
+)
+INSERT INTO dbo.SubscriptionPlans (Name, Description, CardTypeId, Price, RideCount, ValidityDays, IsActive, CreatedAt)
+SELECT d.Name, d.Descr, d.CardTypeId, d.Price, d.RideCount, d.ValidityDays, 1, GETDATE()
+FROM DummyPlans d
+WHERE NOT EXISTS (SELECT 1 FROM dbo.SubscriptionPlans sp WHERE sp.Name = d.Name);
+
+
+/* 14.7) Ek dummy kart abonmanlari (her '46' kart icin 1 adet). */
+INSERT INTO dbo.CardSubscriptions (CardId, SubscriptionPlanId, StartDate, EndDate, RemainingRideCount, Status, CreatedAt)
+SELECT c.CardId, p.SubscriptionPlanId, GETDATE(), DATEADD(DAY, p.ValidityDays, GETDATE()), p.RideCount, 'Active', GETDATE()
+FROM dbo.Cards c
+CROSS APPLY (
+    SELECT TOP 1 sp.SubscriptionPlanId, sp.ValidityDays, sp.RideCount
+    FROM dbo.SubscriptionPlans sp
+    ORDER BY sp.SubscriptionPlanId
+) p
+WHERE c.CardNumber LIKE '46%'
+  AND NOT EXISTS (SELECT 1 FROM dbo.CardSubscriptions cs WHERE cs.CardId = c.CardId);
+
+
+/* 14.8) Kayip kart bildirimleri icin ayri dummy kartlar (12 adet, '47' prefixli).
+   Bu kartlar yalnizca kayip bildirimi icindir; aktif '46' kartlar ve
+   ana test karti 41896505073 etkilenmez. */
+;WITH DummyLostCards AS (
+    SELECT * FROM (VALUES
+        ('dummyuser01@kentkart.test', '4700000000001', 1),
+        ('dummyuser02@kentkart.test', '4700000000002', 2),
+        ('dummyuser03@kentkart.test', '4700000000003', 3),
+        ('dummyuser04@kentkart.test', '4700000000004', 1),
+        ('dummyuser05@kentkart.test', '4700000000005', 2),
+        ('dummyuser06@kentkart.test', '4700000000006', 3),
+        ('dummyuser07@kentkart.test', '4700000000007', 1),
+        ('dummyuser08@kentkart.test', '4700000000008', 2),
+        ('dummyuser09@kentkart.test', '4700000000009', 3),
+        ('dummyuser10@kentkart.test', '4700000000010', 1),
+        ('dummyuser11@kentkart.test', '4700000000011', 2),
+        ('dummyuser12@kentkart.test', '4700000000012', 3)
+    ) v(Email, CardNumber, CardTypeId)
+)
+INSERT INTO dbo.Cards (UserId, CardTypeId, CardNumber, Balance, Status, CreatedAt)
+SELECT u.UserId, d.CardTypeId, d.CardNumber, 0, 'Active', GETDATE()
+FROM DummyLostCards d
+INNER JOIN dbo.Users u ON u.Email = d.Email
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Cards c WHERE c.CardNumber = d.CardNumber);
+
+
+/* 14.9) Kayip kart bildirimleri (12 adet).
+   Trigger, '47' prefixli kartlarin Status degerini Lost yapar. */
+INSERT INTO dbo.LostCardReports (CardId, UserId, ReportDate, Reason, Status)
+SELECT c.CardId, c.UserId, GETDATE(), 'Dummy 10+ kayip kart bildirimi', 'Reported'
+FROM dbo.Cards c
+WHERE c.CardNumber LIKE '47%'
+  AND NOT EXISTS (SELECT 1 FROM dbo.LostCardReports lcr WHERE lcr.CardId = c.CardId);
